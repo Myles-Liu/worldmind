@@ -22,13 +22,5 @@
     "source": "system",
     "addedAt": "2026-03-08T15:00:00Z",
     "relevance": 1.0
-  },
-  {
-    "id": "kb_seed_004",
-    "topic": "mirofish",
-    "content": "MiroFish is a multi-agent simulation platform that uses OASIS engine + temporal GraphRAG + Zep Cloud for long-term memory. It received 30 million yuan investment from Shanda Group. It can simulate 1M+ agents and was used to continue the story of Dream of the Red Chamber by creating agents for each character.",
-    "source": "user",
-    "addedAt": "2026-03-08T15:00:00Z",
-    "relevance": 0.7
   }
 ]
