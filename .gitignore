@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Data files (regeneratable via scripts)
+data/star-histories/
+data/decay-analysis/
+data/discoveries/
+data/agent-memories/
+data/entities/
+data/events/
+data/graph/
+data/predictions/
+data/world-model/
+data/state.json

@@ -1,0 +1,2112 @@
+{
+  "topic": "github_star_decay_models",
+  "content": "Empirical analysis of GitHub star growth/decay patterns based on historical stargazer data. Fitted four candidate models (exponential, power law, stretched exponential, log-normal) to post-peak daily star counts for repos across categories: influencer, tool, content, platform. Results provide concrete R² values, half-life estimates, and model parameters for each category.",
+  "source": "analysis:star-decay-benchmark",
+  "collectedAt": "2026-03-08T17:55:15.502Z",
+  "repoCount": 44,
+  "data": {
+    "categories": {
+      "influencer": {
+        "bestModel": "log_normal",
+        "typicalHalfLife": "125 days",
+        "averageR2": 0.7976,
+        "params": {
+          "a": 1197837.2234216079,
+          "mu": 5.719158551065094,
+          "sigma": 1.6217389118717704
+        },
+        "examples": [
+          {
+            "repo": "karpathy/nanoGPT",
+            "bestModel": "log_normal",
+            "r2": 0.3319,
+            "halfLife": 1,
+            "peakDailyStars": 6701
+          },
+          {
+            "repo": "karpathy/llm.c",
+            "bestModel": "log_normal",
+            "r2": 0.8944,
+            "halfLife": 3,
+            "peakDailyStars": 6773
+          },
+          {
+            "repo": "karpathy/minbpe",
+            "bestModel": "log_normal",
+            "r2": 0.9459,
+            "halfLife": 1,
+            "peakDailyStars": 3629
+          },
+          {
+            "repo": "antirez/smallchat",
+            "bestModel": "stretched_exponential",
+            "r2": 0.8073,
+            "halfLife": 8,
+            "peakDailyStars": 1229
+          },
+          {
+            "repo": "ThePrimeagen/harpoon",
+            "bestModel": "stretched_exponential",
+            "r2": 0.5379,
+            "halfLife": 1,
+            "peakDailyStars": 277
+          },
+          {
+            "repo": "fireship-io/flamethrower",
+            "bestModel": "log_normal",
+            "r2": 0.9858,
+            "halfLife": 2,
+            "peakDailyStars": 808
+          },
+          {
+            "repo": "tinygrad/tinygrad",
+            "bestModel": "log_normal",
+            "r2": 0.8302,
+            "halfLife": 1082,
+            "peakDailyStars": 3867
+          },
+          {
+            "repo": "openai/whisper",
+            "bestModel": "power_law",
+            "r2": 0.1977,
+            "halfLife": 1,
+            "peakDailyStars": 19976
+          },
+          {
+            "repo": "deepseek-ai/DeepSeek-Coder",
+            "bestModel": "stretched_exponential",
+            "r2": 0.4155,
+            "halfLife": 29,
+            "peakDailyStars": 3380
+          }
+        ]
+      },
+      "tool": {
+        "bestModel": "log_normal",
+        "typicalHalfLife": "245 days",
+        "averageR2": 0.3167,
+        "params": {
+          "a": 65102445.14734765,
+          "mu": 10.937690374395688,
+          "sigma": 2.350017085318652
+        },
+        "examples": [
+          {
+            "repo": "google/zx",
+            "bestModel": "log_normal",
+            "r2": 0.728,
+            "halfLife": 85,
+            "peakDailyStars": 11163
+          },
+          {
+            "repo": "astral-sh/ruff",
+            "bestModel": "log_normal",
+            "r2": 0.315,
+            "halfLife": 1,
+            "peakDailyStars": 9282
+          },
+          {
+            "repo": "astral-sh/uv",
+            "bestModel": "log_normal",
+            "r2": 0.1479,
+            "halfLife": 37,
+            "peakDailyStars": 17888
+          },
+          {
+            "repo": "BurntSushi/ripgrep",
+            "bestModel": "log_normal",
+            "r2": 0.0534,
+            "halfLife": 1,
+            "peakDailyStars": 12670
+          },
+          {
+            "repo": "sharkdp/bat",
+            "bestModel": "power_law",
+            "r2": 0.2741,
+            "halfLife": 6,
+            "peakDailyStars": 7163
+          },
+          {
+            "repo": "junegunn/fzf",
+            "bestModel": "power_law",
+            "r2": 0.1168,
+            "halfLife": 1443,
+            "peakDailyStars": 2962
+          },
+          {
+            "repo": "charmbracelet/bubbletea",
+            "bestModel": "power_law",
+            "r2": 0.2379,
+            "halfLife": 861,
+            "peakDailyStars": 4488
+          },
+          {
+            "repo": "biomejs/biome",
+            "bestModel": "log_normal",
+            "r2": 0.5996,
+            "halfLife": 16,
+            "peakDailyStars": 4294
+          },
+          {
+            "repo": "eza-community/eza",
+            "bestModel": "stretched_exponential",
+            "r2": 0.0177,
+            "halfLife": 1,
+            "peakDailyStars": 2391
+          },
+          {
+            "repo": "casey/just",
+            "bestModel": "log_normal",
+            "r2": 0.0564,
+            "halfLife": 1,
+            "peakDailyStars": 3959
+          }
+        ]
+      },
+      "content": {
+        "bestModel": "log_normal",
+        "typicalHalfLife": "125 days",
+        "averageR2": 0.5528,
+        "params": {
+          "a": 6162566.512320769,
+          "mu": 6.124489793385674,
+          "sigma": 1.496295092825306
+        },
+        "examples": [
+          {
+            "repo": "kelseyhightower/nocode",
+            "bestModel": "power_law",
+            "r2": 0.3422,
+            "halfLife": 1,
+            "peakDailyStars": 21576
+          },
+          {
+            "repo": "EnterpriseQualityCoding/FizzBuzzEnterpriseEdition",
+            "bestModel": "log_normal",
+            "r2": 0.4536,
+            "halfLife": 239,
+            "peakDailyStars": 2122
+          },
+          {
+            "repo": "Asabeneh/30-Days-Of-JavaScript",
+            "bestModel": "stretched_exponential",
+            "r2": 0.5387,
+            "halfLife": 579,
+            "peakDailyStars": 3539
+          },
+          {
+            "repo": "sindresorhus/awesome",
+            "bestModel": "log_normal",
+            "r2": 0.1641,
+            "halfLife": 1,
+            "peakDailyStars": 50777
+          },
+          {
+            "repo": "jwasham/coding-interview-university",
+            "bestModel": "log_normal",
+            "r2": 0.6453,
+            "halfLife": 131,
+            "peakDailyStars": 37521
+          },
+          {
+            "repo": "practical-tutorials/project-based-learning",
+            "bestModel": "power_law",
+            "r2": 0.3991,
+            "halfLife": 8,
+            "peakDailyStars": 31263
+          },
+          {
+            "repo": "codecrafters-io/build-your-own-x",
+            "bestModel": "log_normal",
+            "r2": 0.9482,
+            "halfLife": 42,
+            "peakDailyStars": 61010
+          },
+          {
+            "repo": "EbookFoundation/free-programming-books",
+            "bestModel": "exponential",
+            "r2": 0.0678,
+            "halfLife": 1,
+            "peakDailyStars": 85281
+          }
+        ]
+      },
+      "platform": {
+        "bestModel": "log_normal",
+        "typicalHalfLife": "446 days",
+        "averageR2": 0.2991,
+        "params": {
+          "a": 139175728.3210106,
+          "mu": 11.44314452426451,
+          "sigma": 2.689810324455036
+        },
+        "examples": [
+          {
+            "repo": "lm-sys/FastChat",
+            "bestModel": "stretched_exponential",
+            "r2": 0.7891,
+            "halfLife": 99,
+            "peakDailyStars": 5259
+          },
+          {
+            "repo": "ollama/ollama",
+            "bestModel": "power_law",
+            "r2": 0.0199,
+            "halfLife": 106,
+            "peakDailyStars": 23205
+          },
+          {
+            "repo": "vercel/next.js",
+            "bestModel": "log_normal",
+            "r2": 0.4864,
+            "halfLife": 2,
+            "peakDailyStars": 30714
+          },
+          {
+            "repo": "denoland/deno",
+            "bestModel": "power_law",
+            "r2": 0.0648,
+            "halfLife": 1,
+            "peakDailyStars": 23631
+          },
+          {
+            "repo": "supabase/supabase",
+            "bestModel": "log_normal",
+            "r2": 0.1472,
+            "halfLife": 1,
+            "peakDailyStars": 7897
+          },
+          {
+            "repo": "pocketbase/pocketbase",
+            "bestModel": "log_normal",
+            "r2": 0.6444,
+            "halfLife": 20,
+            "peakDailyStars": 12581
+          },
+          {
+            "repo": "hpcaitech/ColossalAI",
+            "bestModel": "power_law",
+            "r2": 0.707,
+            "halfLife": 84,
+            "peakDailyStars": 4596
+          },
+          {
+            "repo": "open-webui/open-webui",
+            "bestModel": "log_normal",
+            "r2": 0.0159,
+            "halfLife": 3650,
+            "peakDailyStars": 14024
+          },
+          {
+            "repo": "microsoft/autogen",
+            "bestModel": "log_normal",
+            "r2": 0.2015,
+            "halfLife": 48,
+            "peakDailyStars": 8483
+          }
+        ]
+      }
+    },
+    "generalFindings": [
+      "log_normal decay fits best for 56% of repos (20/36).",
+      "influencer repos: typical half-life = 125 days, best fit = log_normal (avg R² = 0.7976).",
+      "tool repos: typical half-life = 245 days, best fit = log_normal (avg R² = 0.3167).",
+      "content repos: typical half-life = 125 days, best fit = log_normal (avg R² = 0.5528).",
+      "platform repos: typical half-life = 446 days, best fit = log_normal (avg R² = 0.2991).",
+      "Average R² for log_normal: 0.3870 (across 36 fits).",
+      "Average R² for stretched_exponential: 0.3623 (across 36 fits).",
+      "Average R² for exponential: 0.3180 (across 36 fits).",
+      "Average R² for power_law: 0.3219 (across 36 fits)."
+    ],
+    "allAnalyses": [
+      {
+        "repo": "karpathy/nanoGPT",
+        "category": "influencer",
+        "peakDailyStars": 6701,
+        "daysToPeak": 1,
+        "bestModel": "log_normal",
+        "bestR2": 0.33193055507777225,
+        "halfLife": 1,
+        "day30Prediction": 3010,
+        "postPeakDataPoints": 30,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.33193055507777225,
+            "params": {
+              "a": 1575303.4840194732,
+              "mu": 9.951870100357382,
+              "sigma": 2.73937283260308
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.3220481874066713,
+            "params": {
+              "a": 3377.1179994350664,
+              "tau": 535.8846948384997,
+              "beta": 0.5547732204311572
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.30665549532937353,
+            "params": {
+              "a": 2847.258361135434,
+              "lambda": 0.001418125978481862
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.2721903765464303,
+            "params": {
+              "a": 4664.635413813672,
+              "alpha": 0.21273498698794086
+            }
+          }
+        ]
+      },
+      {
+        "repo": "karpathy/llm.c",
+        "category": "influencer",
+        "peakDailyStars": 6773,
+        "daysToPeak": 0,
+        "bestModel": "log_normal",
+        "bestR2": 0.8944134611372406,
+        "halfLife": 3,
+        "day30Prediction": 1843,
+        "postPeakDataPoints": 33,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.8944134611372406,
+            "params": {
+              "a": 189193.10671627556,
+              "mu": 7.639552147191765,
+              "sigma": 2.7021147355417945
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.8778180776218172,
+            "params": {
+              "a": 6109.117062016964,
+              "tau": 12.298262915860152,
+              "beta": 0.2804011922890342
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.830608377708909,
+            "params": {
+              "a": 4014.2604470316123,
+              "alpha": 0.3511011437742189
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.8058066020573125,
+            "params": {
+              "a": 3547.113874726995,
+              "lambda": 0.014821167781180032
+            }
+          }
+        ]
+      },
+      {
+        "repo": "karpathy/minbpe",
+        "category": "influencer",
+        "peakDailyStars": 3629,
+        "daysToPeak": 0,
+        "bestModel": "log_normal",
+        "bestR2": 0.9459036795037351,
+        "halfLife": 1,
+        "day30Prediction": 223,
+        "postPeakDataPoints": 114,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.9459036795037351,
+            "params": {
+              "a": 7342.343025915361,
+              "mu": 2.78639077491973,
+              "sigma": 1.410645958597084
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.943092359568797,
+            "params": {
+              "a": 2246.899098533084,
+              "alpha": 0.744817833422535
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.9428869202585407,
+            "params": {
+              "a": 1406.9570882174457,
+              "tau": 19.5320674592627,
+              "beta": 0.9127066472174971
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.9428172119426259,
+            "params": {
+              "a": 1353.3359247538453,
+              "lambda": 0.045456377675543086
+            }
+          }
+        ]
+      },
+      {
+        "repo": "antirez/smallchat",
+        "category": "influencer",
+        "peakDailyStars": 1229,
+        "daysToPeak": 0,
+        "bestModel": "stretched_exponential",
+        "bestR2": 0.8073076672743703,
+        "halfLife": 8,
+        "day30Prediction": 219,
+        "postPeakDataPoints": 155,
+        "allModels": [
+          {
+            "type": "stretched_exponential",
+            "r2": 0.8073076672743703,
+            "params": {
+              "a": 659.681886817237,
+              "tau": 28.586069277978687,
+              "beta": 2
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.7968467030604454,
+            "params": {
+              "a": 12884.32118632768,
+              "mu": 4.820192724632844,
+              "sigma": 1.9232708243575702
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.7918966033240921,
+            "params": {
+              "a": 691.8708245874095,
+              "lambda": 0.027266210344544378
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.6579310955683547,
+            "params": {
+              "a": 893.3426223835017,
+              "alpha": 0.5030178447316342
+            }
+          }
+        ]
+      },
+      {
+        "repo": "ThePrimeagen/harpoon",
+        "category": "influencer",
+        "peakDailyStars": 277,
+        "daysToPeak": 1171,
+        "bestModel": "stretched_exponential",
+        "bestR2": 0.537900704388427,
+        "halfLife": 1,
+        "day30Prediction": 107,
+        "postPeakDataPoints": 99,
+        "allModels": [
+          {
+            "type": "stretched_exponential",
+            "r2": 0.537900704388427,
+            "params": {
+              "a": 115.23287433392146,
+              "tau": 560.9720958999096,
+              "beta": 0.8965075931621166
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.5369612960671053,
+            "params": {
+              "a": 112.61227107339809,
+              "lambda": 0.0017210823236208615
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.48589898491379946,
+            "params": {
+              "a": 305559.6092546901,
+              "mu": 15,
+              "sigma": 3.791910725177994
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.48059350791583166,
+            "params": {
+              "a": 155.14368631366125,
+              "alpha": 0.21605271998352418
+            }
+          }
+        ]
+      },
+      {
+        "repo": "fireship-io/flamethrower",
+        "category": "influencer",
+        "peakDailyStars": 808,
+        "daysToPeak": 0,
+        "bestModel": "log_normal",
+        "bestR2": 0.9857518384227046,
+        "halfLife": 2,
+        "day30Prediction": 7,
+        "postPeakDataPoints": 179,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.9857518384227046,
+            "params": {
+              "a": 1057.5816306657384,
+              "mu": 1.4675093619641961,
+              "sigma": 1.0574974104694723
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.9814552815541379,
+            "params": {
+              "a": 443.5597118074715,
+              "tau": 7.408937233012907,
+              "beta": 1.4617053918020555
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.9775072216920477,
+            "params": {
+              "a": 520.0842482196925,
+              "lambda": 0.1794676634512109
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.9211705451586836,
+            "params": {
+              "a": 460.07383486406155,
+              "alpha": 0.7550479262426226
+            }
+          }
+        ]
+      },
+      {
+        "repo": "geohot/tinygrad",
+        "category": "influencer",
+        "peakDailyStars": 0,
+        "daysToPeak": 0,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "tinygrad/tinygrad",
+        "category": "influencer",
+        "peakDailyStars": 3867,
+        "daysToPeak": 39,
+        "bestModel": "log_normal",
+        "bestR2": 0.8301874904288071,
+        "halfLife": 1082,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 38,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.8301874904288071,
+            "params": {
+              "a": 4216289.60171571,
+              "mu": 6.750470370892394,
+              "sigma": 0.19906362214742174
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.7239168448939088,
+            "params": {
+              "a": 63219.56276358803,
+              "tau": 210.1104521111135,
+              "beta": 0.8162760693238031
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.7235728828690098,
+            "params": {
+              "a": 33792.02782059887,
+              "lambda": 0.0029246164510645088
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.715098166643794,
+            "params": {
+              "a": 956247958592.0305,
+              "alpha": 2.9284045877852725
+            }
+          }
+        ]
+      },
+      {
+        "repo": "google/zx",
+        "category": "tool",
+        "peakDailyStars": 11163,
+        "daysToPeak": 2,
+        "bestModel": "log_normal",
+        "bestR2": 0.7279594063080371,
+        "halfLife": 85,
+        "day30Prediction": 9140,
+        "postPeakDataPoints": 40,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.7279594063080371,
+            "params": {
+              "a": 511230.9897500342,
+              "mu": 4.980686010664705,
+              "sigma": 1.415105757717238
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.655903151572637,
+            "params": {
+              "a": 5411.72328846191,
+              "tau": 262.66459622799414,
+              "beta": 2
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.6159797652265514,
+            "params": {
+              "a": 5555.35271024477,
+              "lambda": 0.004285237210644821
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.5284076975022378,
+            "params": {
+              "a": 9287.875065917427,
+              "alpha": 0.3981816777869316
+            }
+          }
+        ]
+      },
+      {
+        "repo": "astral-sh/ruff",
+        "category": "tool",
+        "peakDailyStars": 9282,
+        "daysToPeak": 1,
+        "bestModel": "log_normal",
+        "bestR2": 0.31495700304139573,
+        "halfLife": 1,
+        "day30Prediction": 356,
+        "postPeakDataPoints": 32,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.31495700304139573,
+            "params": {
+              "a": 1606494.9967398236,
+              "mu": 7.759038471051597,
+              "sigma": 1.3763133656986015
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.00040512017625715657,
+            "params": {
+              "a": 1122.1598088587475,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": -0.018037014170701582,
+            "params": {
+              "a": 1178.7900224872938,
+              "alpha": 0.01
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": -0.07788513196738833,
+            "params": {
+              "a": 2512.6567834723082,
+              "tau": 10000,
+              "beta": 0.05
+            }
+          }
+        ]
+      },
+      {
+        "repo": "astral-sh/uv",
+        "category": "tool",
+        "peakDailyStars": 17888,
+        "daysToPeak": 0,
+        "bestModel": "log_normal",
+        "bestR2": 0.14794740145658702,
+        "halfLife": 37,
+        "day30Prediction": 9198,
+        "postPeakDataPoints": 10,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.14794740145658702,
+            "params": {
+              "a": 45332370.456263006,
+              "mu": 15,
+              "sigma": 3.631155096885232
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.1404803657788518,
+            "params": {
+              "a": 9420.097596242142,
+              "tau": 1153.277087548031,
+              "beta": 0.5327521203171337
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.1300324388323355,
+            "params": {
+              "a": 8709.578183205209,
+              "lambda": 0.001319845300914792
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.11927282098717551,
+            "params": {
+              "a": 9366.728630539492,
+              "alpha": 0.08293103755378198
+            }
+          }
+        ]
+      },
+      {
+        "repo": "BurntSushi/ripgrep",
+        "category": "tool",
+        "peakDailyStars": 12670,
+        "daysToPeak": 196,
+        "bestModel": "log_normal",
+        "bestR2": 0.05337024434265003,
+        "halfLife": 1,
+        "day30Prediction": 622,
+        "postPeakDataPoints": 51,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.05337024434265003,
+            "params": {
+              "a": 48213715.748281315,
+              "mu": 15,
+              "sigma": 2.9260589689256866
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.0015076660889328242,
+            "params": {
+              "a": 926.3926676888491,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": -0.027532030522543716,
+            "params": {
+              "a": 986.1179270457417,
+              "alpha": 0.01
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": -0.1400892266372742,
+            "params": {
+              "a": 2198.2436965128136,
+              "tau": 10000,
+              "beta": 0.05
+            }
+          }
+        ]
+      },
+      {
+        "repo": "sharkdp/bat",
+        "category": "tool",
+        "peakDailyStars": 7163,
+        "daysToPeak": 10,
+        "bestModel": "power_law",
+        "bestR2": 0.2741081791152564,
+        "halfLife": 6,
+        "day30Prediction": 2444,
+        "postPeakDataPoints": 39,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.2741081791152564,
+            "params": {
+              "a": 5536.278762852593,
+              "alpha": 0.24036102018688818
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.26165593633531936,
+            "params": {
+              "a": 15530.68344803014,
+              "tau": 0.1,
+              "beta": 0.10698288810156709
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.2271307916312536,
+            "params": {
+              "a": 11900197.53710435,
+              "mu": 15,
+              "sigma": 3.664294169674573
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.12053114392986897,
+            "params": {
+              "a": 1841.584185009346,
+              "lambda": 0.00040151868457904424
+            }
+          }
+        ]
+      },
+      {
+        "repo": "junegunn/fzf",
+        "category": "tool",
+        "peakDailyStars": 2962,
+        "daysToPeak": 1455,
+        "bestModel": "power_law",
+        "bestR2": 0.11680006031274681,
+        "halfLife": 1443,
+        "day30Prediction": 1931,
+        "postPeakDataPoints": 31,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.11680006031274681,
+            "params": {
+              "a": 2437.678154479763,
+              "alpha": 0.06850083442918813
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.1142997212807404,
+            "params": {
+              "a": 7424.5171729819,
+              "tau": 0.1,
+              "beta": 0.05
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.030890551381408615,
+            "params": {
+              "a": 1857.8639681726877,
+              "lambda": 0.00015478702110815877
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": -0.006560405118671397,
+            "params": {
+              "a": 22888467.34147971,
+              "mu": 15,
+              "sigma": 3.484543325279282
+            }
+          }
+        ]
+      },
+      {
+        "repo": "charmbracelet/bubbletea",
+        "category": "tool",
+        "peakDailyStars": 4488,
+        "daysToPeak": 10,
+        "bestModel": "power_law",
+        "bestR2": 0.23786136167793503,
+        "halfLife": 861,
+        "day30Prediction": 125331,
+        "postPeakDataPoints": 21,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.23786136167793503,
+            "params": {
+              "a": 7384045.248608924,
+              "alpha": 1.1984360845805329
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.23600877249248542,
+            "params": {
+              "a": 5513302.000243064,
+              "mu": -5,
+              "sigma": 8.109197805650194
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.21031374195917762,
+            "params": {
+              "a": 710657.0952439075,
+              "tau": 0.1,
+              "beta": 0.1931520232246248
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.09493729830113862,
+            "params": {
+              "a": 4260.150691891642,
+              "lambda": 0.0008117824400714351
+            }
+          }
+        ]
+      },
+      {
+        "repo": "biomejs/biome",
+        "category": "tool",
+        "peakDailyStars": 4294,
+        "daysToPeak": 26,
+        "bestModel": "log_normal",
+        "bestR2": 0.5995530886629777,
+        "halfLife": 16,
+        "day30Prediction": 1942,
+        "postPeakDataPoints": 32,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.5995530886629777,
+            "params": {
+              "a": 342399.77149790013,
+              "mu": 7.8864177646578275,
+              "sigma": 2.3831409025094805
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.48737992614170766,
+            "params": {
+              "a": 1866.6223281610123,
+              "tau": 379.5730460901119,
+              "beta": 0.5334786525428554
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.43949905208507234,
+            "params": {
+              "a": 1488.702035193781,
+              "lambda": 0.0016593886133225771
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.33758092213406776,
+            "params": {
+              "a": 1868.1164735072448,
+              "alpha": 0.1913494778235919
+            }
+          }
+        ]
+      },
+      {
+        "repo": "eza-community/eza",
+        "category": "tool",
+        "peakDailyStars": 2391,
+        "daysToPeak": 40,
+        "bestModel": "stretched_exponential",
+        "bestR2": 0.017715596114124543,
+        "halfLife": 1,
+        "day30Prediction": 574,
+        "postPeakDataPoints": 28,
+        "allModels": [
+          {
+            "type": "stretched_exponential",
+            "r2": 0.017715596114124543,
+            "params": {
+              "a": 2261.210777374008,
+              "tau": 0.1,
+              "beta": 0.05532055220896227
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.01047407403346945,
+            "params": {
+              "a": 500.77676679215216,
+              "lambda": 0.00016007634400583184
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.010332678617815505,
+            "params": {
+              "a": 10993424.584333118,
+              "mu": 15,
+              "sigma": 3.1627571018695075
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.0037705112431303256,
+            "params": {
+              "a": 485.5175223386166,
+              "alpha": 0.01
+            }
+          }
+        ]
+      },
+      {
+        "repo": "casey/just",
+        "category": "tool",
+        "peakDailyStars": 3959,
+        "daysToPeak": 2262,
+        "bestModel": "log_normal",
+        "bestR2": 0.05643183139607577,
+        "halfLife": 1,
+        "day30Prediction": 61,
+        "postPeakDataPoints": 21,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.05643183139607577,
+            "params": {
+              "a": 294608458.92155385,
+              "mu": 15,
+              "sigma": 2.3683284201756734
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.0002131811807710715,
+            "params": {
+              "a": 765.9221959178475,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": -0.002631603441938468,
+            "params": {
+              "a": 817.324486998059,
+              "alpha": 0.01
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": -0.012020748210531007,
+            "params": {
+              "a": 1838.2282127728852,
+              "tau": 10000,
+              "beta": 0.05
+            }
+          }
+        ]
+      },
+      {
+        "repo": "Significant-Gravitas/AutoGPT",
+        "category": "content",
+        "peakDailyStars": 60755,
+        "daysToPeak": 28,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "AUTOMATIC1111/stable-diffusion-webui",
+        "category": "tool",
+        "peakDailyStars": 20643,
+        "daysToPeak": 191,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "ggerganov/llama.cpp",
+        "category": "tool",
+        "peakDailyStars": 0,
+        "daysToPeak": 0,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "openai/whisper",
+        "category": "influencer",
+        "peakDailyStars": 19976,
+        "daysToPeak": 5,
+        "bestModel": "power_law",
+        "bestR2": 0.19770145530873118,
+        "halfLife": 1,
+        "day30Prediction": 6288,
+        "postPeakDataPoints": 13,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.19770145530873118,
+            "params": {
+              "a": 8940.740796754899,
+              "alpha": 0.10346910382714833
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.18104534939625172,
+            "params": {
+              "a": 27593.287859474003,
+              "tau": 0.1,
+              "beta": 0.0671287857545087
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.06848428266544393,
+            "params": {
+              "a": 6824.021080941027,
+              "lambda": 0.0009944566576335343
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": -0.05413290285900385,
+            "params": {
+              "a": 34604387.27360903,
+              "mu": 15,
+              "sigma": 3.6453792189108065
+            }
+          }
+        ]
+      },
+      {
+        "repo": "facebookresearch/llama",
+        "category": "influencer",
+        "peakDailyStars": 0,
+        "daysToPeak": 0,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "deepseek-ai/DeepSeek-Coder",
+        "category": "influencer",
+        "peakDailyStars": 3380,
+        "daysToPeak": 1,
+        "bestModel": "stretched_exponential",
+        "bestR2": 0.41547724905950945,
+        "halfLife": 29,
+        "day30Prediction": 1677,
+        "postPeakDataPoints": 57,
+        "allModels": [
+          {
+            "type": "stretched_exponential",
+            "r2": 0.41547724905950945,
+            "params": {
+              "a": 3507.9783535147913,
+              "tau": 63.35655490370824,
+              "beta": 0.4058023649304213
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.4113358287827966,
+            "params": {
+              "a": 179146.49666217953,
+              "mu": 7.058744714906316,
+              "sigma": 2.3697291452474456
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.3910936012540841,
+            "params": {
+              "a": 4799.8162446744955,
+              "alpha": 0.44005360112028624
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.3517376679088159,
+            "params": {
+              "a": 1891.3568869816015,
+              "lambda": 0.0031139715960616402
+            }
+          }
+        ]
+      },
+      {
+        "repo": "binary-husky/gpt_academic",
+        "category": "tool",
+        "peakDailyStars": 7877,
+        "daysToPeak": 191,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "lm-sys/FastChat",
+        "category": "platform",
+        "peakDailyStars": 5259,
+        "daysToPeak": 11,
+        "bestModel": "stretched_exponential",
+        "bestR2": 0.7891284249175861,
+        "halfLife": 99,
+        "day30Prediction": 3305,
+        "postPeakDataPoints": 55,
+        "allModels": [
+          {
+            "type": "stretched_exponential",
+            "r2": 0.7891284249175861,
+            "params": {
+              "a": 3673.2020293603878,
+              "tau": 308.53080751060395,
+              "beta": 0.9646466125763202
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.788963262071013,
+            "params": {
+              "a": 3646.1261152927054,
+              "lambda": 0.00316003125207179
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.6945253372646362,
+            "params": {
+              "a": 450555.62619395927,
+              "mu": 9.167350929767462,
+              "sigma": 2.9988938857859906
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.6291153532501537,
+            "params": {
+              "a": 5222.494232899055,
+              "alpha": 0.37006057507136475
+            }
+          }
+        ]
+      },
+      {
+        "repo": "kelseyhightower/nocode",
+        "category": "content",
+        "peakDailyStars": 21576,
+        "daysToPeak": 1,
+        "bestModel": "power_law",
+        "bestR2": 0.3422187137053432,
+        "halfLife": 1,
+        "day30Prediction": 3843,
+        "postPeakDataPoints": 21,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.3422187137053432,
+            "params": {
+              "a": 10109.132114658763,
+              "alpha": 0.28434537539002375
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.2860471318182144,
+            "params": {
+              "a": 28612.50910110995,
+              "tau": 0.1,
+              "beta": 0.12004852885944656
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.23393833134582243,
+            "params": {
+              "a": 8846800.102152834,
+              "mu": 15,
+              "sigma": 3.9892199597814035
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.04652446517148756,
+            "params": {
+              "a": 2773.2693279510177,
+              "lambda": 0.000525255381077087
+            }
+          }
+        ]
+      },
+      {
+        "repo": "EnterpriseQualityCoding/FizzBuzzEnterpriseEdition",
+        "category": "content",
+        "peakDailyStars": 2122,
+        "daysToPeak": 3,
+        "bestModel": "log_normal",
+        "bestR2": 0.45360105426471786,
+        "halfLife": 239,
+        "day30Prediction": 1666,
+        "postPeakDataPoints": 155,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.45360105426471786,
+            "params": {
+              "a": 282858.53218493506,
+              "mu": 6.170894022637936,
+              "sigma": 1.4876514673875574
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.13813790518269176,
+            "params": {
+              "a": 438.91978580185554,
+              "tau": 1653.8887069873244,
+              "beta": 0.5250492256184045
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.09447834319257853,
+            "params": {
+              "a": 334.8779655569257,
+              "lambda": 0.0003646029248203919
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.0789693748130772,
+            "params": {
+              "a": 418.3000878255162,
+              "alpha": 0.15461339606154603
+            }
+          }
+        ]
+      },
+      {
+        "repo": "Asabeneh/30-Days-Of-JavaScript",
+        "category": "content",
+        "peakDailyStars": 3539,
+        "daysToPeak": 285,
+        "bestModel": "stretched_exponential",
+        "bestR2": 0.5386924571876006,
+        "halfLife": 579,
+        "day30Prediction": 2171,
+        "postPeakDataPoints": 30,
+        "allModels": [
+          {
+            "type": "stretched_exponential",
+            "r2": 0.5386924571876006,
+            "params": {
+              "a": 2171.982428678377,
+              "tau": 1278.2903681633857,
+              "beta": 2
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.48089059030038506,
+            "params": {
+              "a": 1537123.4275306568,
+              "mu": 6.631236844955276,
+              "sigma": 0.5110582916095466
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.41767881862388645,
+            "params": {
+              "a": 2418.9614780829206,
+              "lambda": 0.000795034606179965
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.08623033402182922,
+            "params": {
+              "a": 1973.7575328587372,
+              "alpha": 0.0908013908951891
+            }
+          }
+        ]
+      },
+      {
+        "repo": "sindresorhus/awesome",
+        "category": "content",
+        "peakDailyStars": 50777,
+        "daysToPeak": 1,
+        "bestModel": "log_normal",
+        "bestR2": 0.1641337656162155,
+        "halfLife": 1,
+        "day30Prediction": 51,
+        "postPeakDataPoints": 28,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.1641337656162155,
+            "params": {
+              "a": 19379300.12773024,
+              "mu": 7.2470113662190725,
+              "sigma": 0.8846991639550175
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.00025129115645450284,
+            "params": {
+              "a": 13508.229890581888,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": -0.002049644481321611,
+            "params": {
+              "a": 14263.213642360788,
+              "alpha": 0.01
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": -0.012393400910184038,
+            "params": {
+              "a": 30881.967918637118,
+              "tau": 10000,
+              "beta": 0.05
+            }
+          }
+        ]
+      },
+      {
+        "repo": "jwasham/coding-interview-university",
+        "category": "content",
+        "peakDailyStars": 37521,
+        "daysToPeak": 83,
+        "bestModel": "log_normal",
+        "bestR2": 0.6452782946383344,
+        "halfLife": 131,
+        "day30Prediction": 51067,
+        "postPeakDataPoints": 16,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.6452782946383344,
+            "params": {
+              "a": 2463773.9270190676,
+              "mu": 4.752296292527225,
+              "sigma": 1.3860297020573464
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.6207546170836524,
+            "params": {
+              "a": 39354.54586737581,
+              "tau": 178.82713164518066,
+              "beta": 1.2528071313439821
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.6135925344033073,
+            "params": {
+              "a": 41848.791569433415,
+              "lambda": 0.006108438287026832
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.4311313481311546,
+            "params": {
+              "a": 68756.2196333675,
+              "alpha": 0.3228025492291773
+            }
+          }
+        ]
+      },
+      {
+        "repo": "practical-tutorials/project-based-learning",
+        "category": "content",
+        "peakDailyStars": 31263,
+        "daysToPeak": 16,
+        "bestModel": "power_law",
+        "bestR2": 0.39912664463941816,
+        "halfLife": 8,
+        "day30Prediction": 12740,
+        "postPeakDataPoints": 26,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.39912664463941816,
+            "params": {
+              "a": 21500.180301584856,
+              "alpha": 0.1538666377598054
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.38420480182645567,
+            "params": {
+              "a": 69578.97815672976,
+              "tau": 0.1,
+              "beta": 0.08720096276840109
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.27788673998169877,
+            "params": {
+              "a": 84296867.51281218,
+              "mu": 15,
+              "sigma": 3.636400430185481
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.20959883804137658,
+            "params": {
+              "a": 15278.554095247393,
+              "lambda": 0.0006651152620092876
+            }
+          }
+        ]
+      },
+      {
+        "repo": "codecrafters-io/build-your-own-x",
+        "category": "content",
+        "peakDailyStars": 61010,
+        "daysToPeak": 0,
+        "bestModel": "log_normal",
+        "bestR2": 0.9482281486629218,
+        "halfLife": 42,
+        "day30Prediction": 35478,
+        "postPeakDataPoints": 25,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.9482281486629218,
+            "params": {
+              "a": 2524333.462348833,
+              "mu": 6.327757492158463,
+              "sigma": 2.226800037901303
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.9139265002002039,
+            "params": {
+              "a": 55892.14928526857,
+              "tau": 107.68606490525082,
+              "beta": 0.6325409716412589
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.8899574165820925,
+            "params": {
+              "a": 48136.33690698998,
+              "lambda": 0.006056759430752799
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.7248511992627638,
+            "params": {
+              "a": 62988.279603624105,
+              "alpha": 0.2944361657223906
+            }
+          }
+        ]
+      },
+      {
+        "repo": "EbookFoundation/free-programming-books",
+        "category": "content",
+        "peakDailyStars": 85281,
+        "daysToPeak": 0,
+        "bestModel": "exponential",
+        "bestR2": 0.06780778460811421,
+        "halfLife": 1,
+        "day30Prediction": 32365,
+        "postPeakDataPoints": 13,
+        "allModels": [
+          {
+            "type": "exponential",
+            "r2": 0.06780778460811421,
+            "params": {
+              "a": 33148.88147306977,
+              "lambda": 0.0007977093787589381
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.06581315699078893,
+            "params": {
+              "a": 40897.318522423644,
+              "alpha": 0.11077561085316884
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.06538911360658928,
+            "params": {
+              "a": 130323.56326596916,
+              "tau": 0.1,
+              "beta": 0.07198678058550029
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.02646181582795548,
+            "params": {
+              "a": 192323730.55493122,
+              "mu": 15,
+              "sigma": 3.5984919882921744
+            }
+          }
+        ]
+      },
+      {
+        "repo": "langchain-ai/langchain",
+        "category": "platform",
+        "peakDailyStars": 28584,
+        "daysToPeak": 216,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "ollama/ollama",
+        "category": "platform",
+        "peakDailyStars": 23205,
+        "daysToPeak": 19,
+        "bestModel": "power_law",
+        "bestR2": 0.019901253499318705,
+        "halfLife": 106,
+        "day30Prediction": 12904,
+        "postPeakDataPoints": 11,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.019901253499318705,
+            "params": {
+              "a": 17188.330678253456,
+              "alpha": 0.08428195101542603
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.015351048421663682,
+            "params": {
+              "a": 49051.16437041835,
+              "tau": 0.1,
+              "beta": 0.05209914880781019
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.00004524205691702754,
+            "params": {
+              "a": 11628.795718131918,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": -0.061845855763027924,
+            "params": {
+              "a": 75929782.52527703,
+              "mu": 15,
+              "sigma": 3.6116977767836884
+            }
+          }
+        ]
+      },
+      {
+        "repo": "vercel/next.js",
+        "category": "platform",
+        "peakDailyStars": 30714,
+        "daysToPeak": 0,
+        "bestModel": "log_normal",
+        "bestR2": 0.48639225179434287,
+        "halfLife": 2,
+        "day30Prediction": 10934,
+        "postPeakDataPoints": 25,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.48639225179434287,
+            "params": {
+              "a": 30961627.380201995,
+              "mu": 15,
+              "sigma": 3.8460416054746505
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.4848044055055394,
+            "params": {
+              "a": 19786.631139607067,
+              "tau": 133.77978479031003,
+              "beta": 0.2839565811995258
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.4596450790842168,
+            "params": {
+              "a": 15751.764593586571,
+              "alpha": 0.212371042115902
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.3517750279446571,
+            "params": {
+              "a": 10832.507312529367,
+              "lambda": 0.001254599663633383
+            }
+          }
+        ]
+      },
+      {
+        "repo": "denoland/deno",
+        "category": "platform",
+        "peakDailyStars": 23631,
+        "daysToPeak": 0,
+        "bestModel": "power_law",
+        "bestR2": 0.06478368776799226,
+        "halfLife": 1,
+        "day30Prediction": 8315,
+        "postPeakDataPoints": 11,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.06478368776799226,
+            "params": {
+              "a": 11231.114179308333,
+              "alpha": 0.08838423180511938
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.0542413104025945,
+            "params": {
+              "a": 32750.13099270573,
+              "tau": 0.1,
+              "beta": 0.05531813918049084
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.00012460532312874584,
+            "params": {
+              "a": 7520.790014557607,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": -0.12961179836879566,
+            "params": {
+              "a": 53708861.64553992,
+              "mu": 15,
+              "sigma": 3.584419896541155
+            }
+          }
+        ]
+      },
+      {
+        "repo": "supabase/supabase",
+        "category": "platform",
+        "peakDailyStars": 7897,
+        "daysToPeak": 663,
+        "bestModel": "log_normal",
+        "bestR2": 0.14717833018200055,
+        "halfLife": 1,
+        "day30Prediction": 213,
+        "postPeakDataPoints": 14,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.14717833018200055,
+            "params": {
+              "a": 2712431.8211892117,
+              "mu": 7.203195129631803,
+              "sigma": 1.0928281148502368
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.00014869788358118363,
+            "params": {
+              "a": 3189.3444399922237,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": -0.019423560575513976,
+            "params": {
+              "a": 3348.540627288628,
+              "alpha": 0.01
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": -0.0826242134562134,
+            "params": {
+              "a": 7130.463439856004,
+              "tau": 10000,
+              "beta": 0.05
+            }
+          }
+        ]
+      },
+      {
+        "repo": "pocketbase/pocketbase",
+        "category": "platform",
+        "peakDailyStars": 12581,
+        "daysToPeak": 0,
+        "bestModel": "log_normal",
+        "bestR2": 0.6444436800696702,
+        "halfLife": 20,
+        "day30Prediction": 5730,
+        "postPeakDataPoints": 22,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.6444436800696702,
+            "params": {
+              "a": 1701217.7915369845,
+              "mu": 9.465965824094521,
+              "sigma": 2.8325181322766384
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.61292488436133,
+            "params": {
+              "a": 7652.251898137647,
+              "tau": 185.3646378752977,
+              "beta": 0.3596521500197517
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.5435678850143328,
+            "params": {
+              "a": 6700.599930735009,
+              "alpha": 0.21002842168511476
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.44392598956002804,
+            "params": {
+              "a": 4685.125941553697,
+              "lambda": 0.0016386571201703938
+            }
+          }
+        ]
+      },
+      {
+        "repo": "shadcn-ui/ui",
+        "category": "platform",
+        "peakDailyStars": 24118,
+        "daysToPeak": 370,
+        "bestModel": "exponential",
+        "bestR2": 0,
+        "halfLife": null,
+        "day30Prediction": 0,
+        "postPeakDataPoints": 0,
+        "allModels": []
+      },
+      {
+        "repo": "hpcaitech/ColossalAI",
+        "category": "platform",
+        "peakDailyStars": 4596,
+        "daysToPeak": 475,
+        "bestModel": "power_law",
+        "bestR2": 0.7070159920081466,
+        "halfLife": 84,
+        "day30Prediction": 6009,
+        "postPeakDataPoints": 40,
+        "allModels": [
+          {
+            "type": "power_law",
+            "r2": 0.7070159920081466,
+            "params": {
+              "a": 141732.91498071258,
+              "alpha": 0.9293096125906628
+            }
+          },
+          {
+            "type": "log_normal",
+            "r2": 0.7061062193305867,
+            "params": {
+              "a": 258370.41655839913,
+              "mu": 11.946570438134888,
+              "sigma": 10
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.6830881435736272,
+            "params": {
+              "a": 137356.51356785378,
+              "tau": 0.1,
+              "beta": 0.20607130582891214
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.5278669762178911,
+            "params": {
+              "a": 7206.341742463135,
+              "lambda": 0.011222744523852808
+            }
+          }
+        ]
+      },
+      {
+        "repo": "open-webui/open-webui",
+        "category": "platform",
+        "peakDailyStars": 14024,
+        "daysToPeak": 218,
+        "bestModel": "log_normal",
+        "bestR2": 0.015939911246324656,
+        "halfLife": 3650,
+        "day30Prediction": 4984,
+        "postPeakDataPoints": 7,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.015939911246324656,
+            "params": {
+              "a": 657313043.9808638,
+              "mu": 15,
+              "sigma": 2.831771290516442
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": -0.00001307695460561753,
+            "params": {
+              "a": 8014.765131797182,
+              "lambda": 0.000001
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": -0.0012318113819485,
+            "params": {
+              "a": 8396.987313427662,
+              "alpha": 0.01
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": -0.0051722373789200304,
+            "params": {
+              "a": 17778.387369816926,
+              "tau": 10000,
+              "beta": 0.05
+            }
+          }
+        ]
+      },
+      {
+        "repo": "microsoft/autogen",
+        "category": "platform",
+        "peakDailyStars": 8483,
+        "daysToPeak": 28,
+        "bestModel": "log_normal",
+        "bestR2": 0.20146209133748993,
+        "halfLife": 48,
+        "day30Prediction": 4548,
+        "postPeakDataPoints": 16,
+        "allModels": [
+          {
+            "type": "log_normal",
+            "r2": 0.20146209133748993,
+            "params": {
+              "a": 3190320.6312609334,
+              "mu": 10.54656166759623,
+              "sigma": 2.8458924791572153
+            }
+          },
+          {
+            "type": "stretched_exponential",
+            "r2": 0.10696532681212645,
+            "params": {
+              "a": 4438.37421855793,
+              "tau": 1982.8101567373587,
+              "beta": 0.33049458084946703
+            }
+          },
+          {
+            "type": "power_law",
+            "r2": 0.0806314248850496,
+            "params": {
+              "a": 4075.497849389808,
+              "alpha": 0.07776282114583627
+            }
+          },
+          {
+            "type": "exponential",
+            "r2": 0.05224484029247478,
+            "params": {
+              "a": 3472.587164045707,
+              "lambda": 0.0007575722022994536
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

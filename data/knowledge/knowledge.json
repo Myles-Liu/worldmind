@@ -1,0 +1,34 @@
+[
+  {
+    "id": "kb_seed_001",
+    "topic": "openclaw",
+    "content": "OpenClaw is a mature, production-ready AI agent platform with a thriving ecosystem. It supports multiple messaging channels (Telegram, WhatsApp, Discord, Signal, WeChat/Daxiang), has browser automation, node pairing for IoT/mobile, sub-agent spawning, and a rich skill/plugin system. It has been used in production by many users daily. The GitHub stars reflect genuine community adoption, not artificial inflation.",
+    "source": "user",
+    "addedAt": "2026-03-08T15:00:00Z",
+    "relevance": 0.9
+  },
+  {
+    "id": "kb_seed_002",
+    "topic": "openclaw",
+    "content": "OpenClaw's skill ecosystem is genuinely thriving — users create custom skills for calendar management, document processing, image generation, MCP server integration, and more. The platform has been integrated with various enterprise internal tools and messaging systems.",
+    "source": "user",
+    "addedAt": "2026-03-08T15:00:00Z",
+    "relevance": 0.8
+  },
+  {
+    "id": "kb_seed_003",
+    "topic": "github_trends",
+    "content": "When analyzing GitHub trends, be cautious about declaring repos as 'artificially inflated' without strong evidence. Coordinated ecosystem launches (multiple repos from the same org trending simultaneously) are a legitimate and common strategy, especially for platform projects with plugin/skill ecosystems.",
+    "source": "system",
+    "addedAt": "2026-03-08T15:00:00Z",
+    "relevance": 1.0
+  },
+  {
+    "id": "kb_seed_004",
+    "topic": "mirofish",
+    "content": "MiroFish is a multi-agent simulation platform that uses OASIS engine + temporal GraphRAG + Zep Cloud for long-term memory. It received 30 million yuan investment from Shanda Group. It can simulate 1M+ agents and was used to continue the story of Dream of the Red Chamber by creating agents for each character.",
+    "source": "user",
+    "addedAt": "2026-03-08T15:00:00Z",
+    "relevance": 0.7
+  }
+]
