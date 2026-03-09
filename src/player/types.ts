@@ -122,6 +122,9 @@ export interface WorldConfig {
     model?: string;
   };
 
+  /** World-level context (language, culture, directives) injected into system prompt */
+  worldContext?: string;
+
   /** Player profile (required for player role) */
   player?: {
     username: string;

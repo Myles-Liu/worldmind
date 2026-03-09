@@ -11,7 +11,7 @@
 
 import { WorldEngine } from '../src/player/engine.js';
 import type { Role, PlayerAction, AdminAction, Post } from '../src/player/types.js';
-import { loadWorld, listWorlds, generateProfileCSV } from '../src/player/world-config.js';
+import { loadWorld, listWorlds, generateProfileCSV, buildWorldContext } from '../src/player/world-config.js';
 import { createInterface } from 'readline';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -155,6 +155,7 @@ async function main() {
       baseUrl: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? '',
       model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
     },
+    worldContext: buildWorldContext(worldSettings),
     player: playerConfig,
   });
 

@@ -186,6 +186,14 @@ async def main():
     agents_list = list(agent_graph.get_agents())
     log(f"[engine] {len(agents_list)} agents created")
 
+    # Inject world-level context (language, culture, directives) into system prompt
+    world_context = os.environ.get('WORLDMIND_WORLD_CONTEXT', '')
+    if world_context:
+        log(f"[engine] Injecting world context into {len(agents_list)} agent system prompts")
+        for _, agent in agents_list:
+            original = agent.system_message.content
+            agent.system_message.content = f"{world_context}\n\n{original}"
+
     # Find player agent
     player_id = None
     if player_username:

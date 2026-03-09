@@ -220,6 +220,7 @@ export class WorldEngine {
     };
     if (this.config.llm.baseUrl) env['OPENAI_API_BASE_URL'] = this.config.llm.baseUrl;
     if (this.config.llm.model) env['WORLDMIND_LLM_MODEL'] = this.config.llm.model;
+    if (this.config.worldContext) env['WORLDMIND_WORLD_CONTEXT'] = this.config.worldContext;
     if (this.config.player) {
       env['WORLDMIND_PLAYER_USERNAME'] = this.config.player.username;
     }

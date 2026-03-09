@@ -90,20 +90,34 @@ export interface PlayerConfig {
 }
 
 /**
+ * Build a world-level context string from settings.
+ * This is injected once into the global system prompt (NOT per-agent).
+ * Contains language, culture, and behavioral directives.
+ */
+export function buildWorldContext(settings: WorldSettings): string {
+  const parts: string[] = [];
+  parts.push(`# WORLD CONTEXT`);
+  parts.push(`You are in a community called "${settings.name}".`);
+  if (settings.description) parts.push(settings.description);
+  if (settings.language && settings.language !== 'English') {
+    parts.push(`All communication must be in ${settings.language}.`);
+  }
+  if (settings.culture) parts.push(`Cultural context: ${settings.culture}`);
+  if (settings.agentDirective) parts.push(settings.agentDirective);
+  return parts.join('\n');
+}
+
+/**
  * Generate agent profile CSV from a WorldSettings object.
- * Language, culture, and personality are all read from the config.
+ * Language, culture, and global directives are NOT included here — they
+ * belong in the world-level system prompt (see buildWorldContext).
+ * Each agent's user_char contains ONLY their individual personality.
  */
 export function generateProfileCSV(
   settings: WorldSettings,
   player?: PlayerConfig,
 ): string {
   const lines = ['username,description,user_char'];
-  const langSuffix = settings.language !== 'English'
-    ? ` 用${settings.language}交流。`
-    : '';
-  const directiveSuffix = settings.agentDirective
-    ? ` ${settings.agentDirective}`
-    : '';
 
   for (let i = 0; i < settings.agentCount; i++) {
     const arch = settings.archetypes[i % settings.archetypes.length];
@@ -113,13 +127,13 @@ export function generateProfileCSV(
       : '';
     const username = `${arch.role}${suffix}`;
     lines.push(
-      `${username},${esc(arch.description)},${esc(arch.personality + langSuffix + directiveSuffix)}`,
+      `${username},${esc(arch.description)},${esc(arch.personality)}`,
     );
   }
 
   if (player) {
     lines.push(
-      `${player.username},${esc(player.displayName)},${esc(player.bio + langSuffix)}`,
+      `${player.username},${esc(player.displayName)},${esc(player.bio)}`,
     );
   }
 
