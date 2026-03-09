@@ -15,13 +15,31 @@ export class KnowledgeBase {
   private filePath: string;
 
   constructor(dataDir = 'data/knowledge') {
+    this.dataDir = dataDir;
     this.filePath = path.join(dataDir, 'knowledge.json');
   }
 
+  private dataDir: string;
+
   async load(): Promise<void> {
+    this.entries = [];
+
+    // Load all .json files in the knowledge directory
     try {
-      const content = await fs.readFile(this.filePath, 'utf-8');
-      this.entries = JSON.parse(content) as KnowledgeEntry[];
+      const files = await fs.readdir(this.dataDir);
+      for (const file of files.filter(f => f.endsWith('.json'))) {
+        try {
+          const content = await fs.readFile(path.join(this.dataDir, file), 'utf-8');
+          const parsed = JSON.parse(content);
+          if (Array.isArray(parsed)) {
+            // knowledge.json format: array of entries
+            this.entries.push(...parsed);
+          } else if (parsed.topic && parsed.content) {
+            // Single entry format (e.g. prediction-calibration.json)
+            this.entries.push(parsed);
+          }
+        } catch { /* skip malformed files */ }
+      }
     } catch {
       this.entries = [];
     }

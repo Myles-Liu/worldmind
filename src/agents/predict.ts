@@ -165,8 +165,9 @@ export class PredictAgent extends BaseAgent {
       .filter(Boolean)
       .join('\n');
 
-    // Build knowledge context from all repo/tech names mentioned
+    // Build knowledge context — always include calibration data
     const knowledgeTopics = [
+      'prediction_calibration',  // Always load calibration data from backtests
       ...trendOutputs.map(o => (o.data['repo'] as string) ?? '').filter(Boolean),
       ...trendSignals.map(e => (e.data['repo'] as string) ?? '').filter(Boolean),
       ...repoEvents.map(e => ((e.data['metadata'] as any)?.fullName as string) ?? '').filter(Boolean),
