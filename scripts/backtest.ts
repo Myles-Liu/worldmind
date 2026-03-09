@@ -577,17 +577,29 @@ async function main() {
   }, null, 2));
   console.log(`\n  💾 Calibration saved to ${calibrationFile}`);
 
-  // Save as knowledge base entry for agents to consume
-  const knowledgeFile = 'data/knowledge/prediction-calibration.json';
-  const knowledgeEntry = {
-    topic: 'prediction_calibration',
-    content: lessonContent,
-    relevance: 1.0,
-    source: 'backtest',
-    lastUpdated: new Date().toISOString(),
-  };
-  await fs.writeFile(knowledgeFile, JSON.stringify(knowledgeEntry, null, 2));
-  console.log(`  📚 Knowledge entry saved to ${knowledgeFile}`);
+  // Update the prediction_calibration entry in knowledge.json (precise, not a new file)
+  const knowledgeFile = 'data/knowledge/knowledge.json';
+  try {
+    const raw = await fs.readFile(knowledgeFile, 'utf-8');
+    const entries = JSON.parse(raw) as Array<Record<string, unknown>>;
+    const idx = entries.findIndex(e => e['topic'] === 'prediction_calibration');
+    const entry = {
+      topic: 'prediction_calibration',
+      content: lessonContent,
+      relevance: 1.0,
+      source: 'backtest',
+      lastUpdated: new Date().toISOString(),
+    };
+    if (idx >= 0) {
+      entries[idx] = entry;
+    } else {
+      entries.push(entry);
+    }
+    await fs.writeFile(knowledgeFile, JSON.stringify(entries, null, 2));
+    console.log(`  📚 Updated prediction_calibration in ${knowledgeFile}`);
+  } catch (err) {
+    console.error(`  ⚠️  Could not update knowledge.json: ${err}`);
+  }
 
   console.log(`\n✅ Backtest complete. Use calibration data to improve predictions.\n`);
 }

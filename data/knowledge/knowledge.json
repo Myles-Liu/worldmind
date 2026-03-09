@@ -21,6 +21,21 @@
     "content": "When analyzing GitHub trends, be cautious about declaring repos as 'artificially inflated' without strong evidence. Coordinated ecosystem launches (multiple repos from the same org trending simultaneously) are a legitimate and common strategy, especially for platform projects with plugin/skill ecosystems.",
     "source": "system",
     "addedAt": "2026-03-08T15:00:00Z",
-    "relevance": 1.0
+    "relevance": 1
+  },
+  {
+    "id": "kb_seed_004",
+    "topic": "mirofish",
+    "content": "MiroFish is a multi-agent simulation platform that uses OASIS engine + temporal GraphRAG + Zep Cloud for long-term memory. It received 30 million yuan investment from Shanda Group. It can simulate 1M+ agents and was used to continue the story of Dream of the Red Chamber by creating agents for each character.",
+    "source": "user",
+    "addedAt": "2026-03-08T15:00:00Z",
+    "relevance": 0.7
+  },
+  {
+    "topic": "prediction_calibration",
+    "content": "Calibration from 6 backtests (observation window: 3 days):\n- Systematic bias: UNDERESTIMATES by 20% on average\n- Median absolute error: 34%\n- Overestimate rate: 17%\n- Correction factor: multiply raw predictions by 1.25 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence",
+    "relevance": 1,
+    "source": "backtest",
+    "lastUpdated": "2026-03-09T06:52:00.545Z"
   }
 ]

@@ -1,23 +1,23 @@
 {
-  "timestamp": "2026-03-09T05:53:31.346Z",
+  "timestamp": "2026-03-09T06:52:00.545Z",
   "observationDays": 3,
   "repoCount": 6,
   "calibration": {
-    "meanError": -0.0078117024224195475,
-    "meanAbsError": 0.36668485761569825,
-    "medianAbsError": 0.3179774932572775,
-    "overestimateRate": 0.3333333333333333,
-    "calibrationBias": -0.0078117024224195475,
+    "meanError": -0.20174555350940496,
+    "meanAbsError": 0.2881883395790567,
+    "medianAbsError": 0.3404363267376966,
+    "overestimateRate": 0.16666666666666666,
+    "calibrationBias": -0.20174555350940496,
     "byConfidenceBucket": [
       {
         "bucket": "30-50%",
-        "count": 4,
-        "accuracy": 0.75
+        "count": 5,
+        "accuracy": 0.4
       },
       {
         "bucket": "50-70%",
         "count": 2,
-        "accuracy": 0
+        "accuracy": 1
       },
       {
         "bucket": "70-90%",
@@ -33,59 +33,59 @@
   },
   "results": [
     {
-      "repo": "electric-sql/pglite",
-      "predicted": 7000,
-      "actual": 7127,
-      "confidence": 0.42,
-      "error": -0.017819559421916657,
-      "absError": 0.017819559421916657,
-      "direction": "exact"
-    },
-    {
-      "repo": "cohere-ai/cohere-toolkit",
-      "predicted": 2600,
-      "actual": 2144,
-      "confidence": 0.4,
-      "error": 0.2126865671641791,
-      "absError": 0.2126865671641791,
-      "direction": "over"
-    },
-    {
-      "repo": "jina-ai/reader",
-      "predicted": 4200,
-      "actual": 5913,
-      "confidence": 0.35,
-      "error": -0.28970065956367325,
-      "absError": 0.28970065956367325,
+      "repo": "face-hh/griddycode",
+      "predicted": 950,
+      "actual": 1073,
+      "confidence": 0.65,
+      "error": -0.11463187325256291,
+      "absError": 0.11463187325256291,
       "direction": "under"
     },
     {
-      "repo": "karpathy/LLM101n",
-      "predicted": 22000,
-      "actual": 32257,
+      "repo": "cohere-ai/cohere-toolkit",
+      "predicted": 2700,
+      "actual": 2144,
+      "confidence": 0.42,
+      "error": 0.2593283582089552,
+      "absError": 0.2593283582089552,
+      "direction": "over"
+    },
+    {
+      "repo": "electric-sql/pglite",
+      "predicted": 5100,
+      "actual": 7127,
       "confidence": 0.5,
-      "error": -0.3179774932572775,
-      "absError": 0.3179774932572775,
+      "error": -0.2844113932931107,
+      "absError": 0.2844113932931107,
+      "direction": "under"
+    },
+    {
+      "repo": "jina-ai/reader",
+      "predicted": 3900,
+      "actual": 5913,
+      "confidence": 0.45,
+      "error": -0.3404363267376966,
+      "absError": 0.3404363267376966,
       "direction": "under"
     },
     {
       "repo": "stanford-oval/storm",
-      "predicted": 8500,
+      "predicted": 11000,
       "actual": 16932,
-      "confidence": 0.12,
-      "error": -0.4979919678714859,
-      "absError": 0.4979919678714859,
+      "confidence": 0.3,
+      "error": -0.3503425466572171,
+      "absError": 0.3503425466572171,
       "direction": "under"
     },
     {
-      "repo": "face-hh/griddycode",
-      "predicted": 2000,
-      "actual": 1073,
-      "confidence": 0.62,
-      "error": 0.863932898415657,
-      "absError": 0.863932898415657,
-      "direction": "over"
+      "repo": "karpathy/LLM101n",
+      "predicted": 20000,
+      "actual": 32257,
+      "confidence": 0.35,
+      "error": -0.3799795393247977,
+      "absError": 0.3799795393247977,
+      "direction": "under"
     }
   ],
-  "lesson": "Calibration from 6 backtests (observation window: 3 days):\n- Systematic bias: UNDERESTIMATES by 1% on average\n- Median absolute error: 32%\n- Overestimate rate: 33%\n- Correction factor: multiply raw predictions by 1.01 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence"
+  "lesson": "Calibration from 6 backtests (observation window: 3 days):\n- Systematic bias: UNDERESTIMATES by 20% on average\n- Median absolute error: 34%\n- Overestimate rate: 17%\n- Correction factor: multiply raw predictions by 1.25 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence"
 }
