@@ -89,12 +89,31 @@ async def main():
         ActionType.FOLLOW, ActionType.DO_NOTHING,
     ]
 
-    # Add player to profiles
-    with open(PROFILE) as f:
-        content = f.read()
-    player_csv = PROFILE.replace('.csv', '_player.csv')
+    # Generate profiles — language/culture from world settings
+    lang = os.environ.get('WORLDMIND_LANG', '中文')
+    directive = f'用{lang}交流。保持角色人设，自然地参与讨论。' if lang != 'English' else 'Stay in character.'
+    
+    CN_ARCHETYPES = [
+        ('engineer', '全栈工程师', f'务实的技术人，关注 AI 和 Web 开发。分享技术洞察，对炒作持怀疑态度。{directive}'),
+        ('vc', '早期投资人', f'追踪新兴项目，关注增长和市场规模。喜欢用数据说话。{directive}'),
+        ('researcher', 'ML 研究员', f'发论文的学者，质疑没有实验支撑的观点。严谨但不无聊。{directive}'),
+        ('indie', '独立开发者', f'快速构建和发布产品。关注变现和开发者工具。结果导向。{directive}'),
+        ('journalist', '科技记者', f'报道 AI 和开源动态。提出尖锐问题，追逐热点。{directive}'),
+        ('skeptic', '技术评论人', f'唱反调，挑战炒作。以犀利点评出名。{directive}'),
+        ('pm', '产品经理', f'关注开发者工具和用户体验。对采用曲线感兴趣。{directive}'),
+        ('student', '计算机系学生', f'对 LLM 和分布式系统充满好奇。爱提问，分享学习笔记。{directive}'),
+        ('designer', 'UX 设计师', f'专注开发者体验和可用性。分享设计评论。{directive}'),
+        ('maintainer', '开源维护者', f'对代码质量和许可证有强烈观点。偶尔 burnout。{directive}'),
+    ]
+    
+    lines = ['username,description,user_char']
+    for role, desc, char in CN_ARCHETYPES:
+        lines.append(f'{role},"{desc}","{char}"')
+    lines.append(f'Myles,"Myles Liu","探索 AI 模拟世界的真人。好奇、直接、不废话。{directive}"')
+    
+    player_csv = os.path.join(PROJECT_ROOT, 'data/social/play_demo_profiles.csv')
     with open(player_csv, 'w') as f:
-        f.write(content.strip() + '\nMyles,"Myles Liu","A real human exploring AI simulations. Direct, curious, no bullshit."\n')
+        f.write('\n'.join(lines) + '\n')
 
     print("  📋 Generating agents...")
     agent_graph = await generate_twitter_agent_graph(
@@ -109,14 +128,14 @@ async def main():
     print("  ✅ World ready\n")
 
     # ─── Round 1: Player posts ───
-    print("═══ Round 1: You post ═══\n")
+    print("═══ Round 1: 你发帖 ═══\n")
     await env.step({
         player_agent: ManualAction(
             action_type=ActionType.CREATE_POST,
-            action_args={'content': 'Hey everyone! Building a multi-agent world simulation — think SimCity but every citizen runs on an LLM. They form opinions, spread info, even evolve over time. Looking for collaborators who want to push this further. 🌍🤖'},
+            action_args={'content': '大家好！我在做一个多 Agent 世界模拟引擎——类似模拟人生，但每个市民都由 LLM 驱动。他们会形成观点、传播信息、甚至随时间进化。底层用 OASIS 做社交模拟，上层用 TypeScript 做分析和预测。有人感兴趣一起搞吗？🌍🤖'},
         )
     })
-    print("  📝 Posted!\n")
+    print("  📝 发帖成功!\n")
 
     # ─── Rounds 2+: Agents react ───
     for r in range(1, rounds + 1):
