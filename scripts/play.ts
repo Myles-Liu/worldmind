@@ -11,8 +11,13 @@
 
 import { WorldEngine } from '../src/player/engine.js';
 import type { Role, PlayerAction, AdminAction, Post } from '../src/player/types.js';
+import {
+  createWorldSettings, generateProfileCSV,
+  PRESET_CN_TECH, PRESET_EN_TECH, PRESET_CN_FINANCE,
+  type WorldSettings,
+} from '../src/player/world-config.js';
 import { createInterface } from 'readline';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 // ─── Parse args ─────────────────────────────────────────────────
@@ -26,6 +31,15 @@ const agentCount = agentCountArg ? parseInt(agentCountArg) : 10;
 
 const nameArg = args.find((_, i) => args[i - 1] === '--name');
 const playerName = nameArg ?? 'player';
+
+// World preset: --world cn-tech | en-tech | cn-finance
+const worldArg = args.find((_, i) => args[i - 1] === '--world');
+const presets: Record<string, Partial<WorldSettings>> = {
+  'cn-tech': PRESET_CN_TECH,
+  'en-tech': PRESET_EN_TECH,
+  'cn-finance': PRESET_CN_FINANCE,
+};
+const selectedPreset = presets[worldArg ?? 'cn-tech'] ?? PRESET_CN_TECH;
 
 // ─── Load env ───────────────────────────────────────────────────
 
@@ -113,8 +127,8 @@ async function main() {
   print(`\n${c.bold}${c.magenta}🌍 WorldMind — ${role === 'admin' ? 'God Mode' : 'Player Mode'}${c.reset}`);
   print(`${'═'.repeat(50)}`);
 
-  const engine = new WorldEngine({
-    platform: 'twitter',
+  // Build world settings from preset
+  const worldSettings = createWorldSettings(selectedPreset, {
     agentCount,
     llm: {
       apiKey: process.env.WORLDMIND_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
@@ -124,10 +138,25 @@ async function main() {
     player: role === 'player' ? {
       username: playerName,
       displayName: playerName,
-      bio: 'A real human in a world of AI.',
+      bio: 'A real human exploring this simulation.',
     } : undefined,
   });
 
+  // Generate profile CSV from world settings
+  const profileDir = join(process.cwd(), 'data/social');
+  mkdirSync(profileDir, { recursive: true });
+  const profilePath = join(profileDir, `world_${Date.now()}.csv`);
+  writeFileSync(profilePath, generateProfileCSV(worldSettings), 'utf-8');
+
+  const engine = new WorldEngine({
+    platform: worldSettings.platform,
+    agentCount: worldSettings.agentCount,
+    profilePath,
+    llm: worldSettings.llm,
+    player: worldSettings.player,
+  });
+
+  info(`World: ${worldSettings.name} (${worldSettings.language})`);
   info(`Agents: ${agentCount}`);
   info('Initializing world...');
 
