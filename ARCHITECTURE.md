@@ -503,7 +503,7 @@ worldmind/
 
 ## Appendix A: Design Inspirations
 
-- **MiroFish Temporal GraphRAG**: Time-indexed knowledge graphs where relationships have validity windows
+- **Temporal GraphRAG**: Time-indexed knowledge graphs where relationships have validity windows
 - **OpenClaw Memory System**: Entity stores with agent annotations and version history
 - **Prediction Markets**: The emphasis on verifiable, time-bound predictions with tracked accuracy
 - **Adversarial Collaboration**: The Challenge Agent is inspired by red-teaming and pre-mortem analysis practices
