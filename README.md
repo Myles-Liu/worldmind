@@ -37,13 +37,13 @@ WorldMind separates the **generic engine** from **domain-specific adapters**.
 │  └───────────────────────────────────────────────────────────┘ │
 └────────────────────────────┬────────────────────────────────────┘
                              │
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-        ┌──────────┐  ┌──────────┐  ┌──────────┐
-        │  GitHub  │  │  Crypto  │  │  Custom  │
-        │ Adapter  │  │ Adapter  │  │ Adapter  │
-        └──────────┘  └──────────┘  └──────────┘
-         5 agents       (yours)       (yours)
+              ┌──────────────┼──────────────┬──────────────┐
+              ▼              ▼              ▼              ▼
+        ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+        │  GitHub  │  │  Crypto  │  │  Social  │  │  Custom  │
+        │ Adapter  │  │ Adapter  │  │ Adapter  │  │ Adapter  │
+        └──────────┘  └──────────┘  └──────────┘  └──────────┘
+         5 agents      CoinGecko     OASIS sim     (yours)
          3 collectors
 ```
 

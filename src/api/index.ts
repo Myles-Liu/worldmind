@@ -40,6 +40,9 @@ export type {
 
 // Built-in domains
 export { GitHubDomainAdapter, GitHubDomainConfig } from '../domains/github/adapter.js';
+export { CryptoDomainAdapter, CryptoDomainConfig } from '../domains/crypto/adapter.js';
+export { SocialDomainAdapter, SocialDomainConfig } from '../domains/social/adapter.js';
+export { OasisBridge, type OasisConfig } from '../domains/social/oasis-bridge.js';
 
 // Engine components (for advanced users building custom domains)
 export { BaseAgent } from '../agents/base-agent.js';
