@@ -45,14 +45,19 @@ export class TrendAgent extends BaseAgent {
   async analyze(events: WorldEvent[]): Promise<AgentOutput[]> {
     await this.initialize();
 
-    const relevantEvents = events.filter(
-      (e) =>
-        e.type === 'repo_trending' ||
-        e.type === 'repo_discovered' ||
-        e.type === 'repo_stars_updated' ||
-        e.type === 'new_repo_discovered' ||
-        e.type === 'hn_mention',
-    );
+    // Filter to relevant events.
+    // If domain context is set, accept all collector events (domain adapter controls what's fed).
+    // Otherwise fall back to GitHub-specific event types for backward compatibility.
+    const relevantEvents = this.domainContext
+      ? events.filter(e => e.source.startsWith('collector:'))
+      : events.filter(
+          (e) =>
+            e.type === 'repo_trending' ||
+            e.type === 'repo_discovered' ||
+            e.type === 'repo_stars_updated' ||
+            e.type === 'new_repo_discovered' ||
+            e.type === 'hn_mention',
+        );
 
     if (relevantEvents.length === 0) {
       await this.finalize();
@@ -109,7 +114,7 @@ export class TrendAgent extends BaseAgent {
     const repoBlocks = repos.map((r, i) => {
       const d = r.data;
       const m = d['metadata'] as any;
-      const parts: string[] = [`--- Repo ${i + 1}: ${r.repoFullName} ---`];
+      const parts: string[] = [`--- Entity ${i + 1}: ${r.repoFullName} ---`];
 
       if (m) {
         if (m.description) parts.push(`Description: ${m.description}`);
@@ -130,6 +135,17 @@ export class TrendAgent extends BaseAgent {
         parts.push(`HN score: ${d['hnScore']}, comments: ${d['hnComments']}, title: "${d['hnTitle']}"`);
       }
 
+      // Generic numeric fields (crypto, finance, etc.)
+      if (d['price'] != null) parts.push(`Price: $${d['price']}`);
+      if (d['marketCap'] != null) parts.push(`Market cap: $${((d['marketCap'] as number) / 1e9).toFixed(1)}B`);
+      if (d['volume24h'] != null) parts.push(`24h volume: $${((d['volume24h'] as number) / 1e6).toFixed(0)}M`);
+      if (d['change1h'] != null) parts.push(`1h change: ${(d['change1h'] as number).toFixed(1)}%`);
+      if (d['change24h'] != null) parts.push(`24h change: ${(d['change24h'] as number).toFixed(1)}%`);
+      if (d['change7d'] != null) parts.push(`7d change: ${(d['change7d'] as number).toFixed(1)}%`);
+      if (d['change30d'] != null) parts.push(`30d change: ${(d['change30d'] as number).toFixed(1)}%`);
+      if (d['ath'] != null) parts.push(`ATH: $${d['ath']}, from ATH: ${(d['athChangePercent'] as number)?.toFixed(0)}%`);
+      if (d['rank'] != null) parts.push(`Rank: #${d['rank']}`);
+
       // README (truncated)
       if (d['readme']) {
         const readme = String(d['readme']).slice(0, 500);
@@ -145,25 +161,25 @@ export class TrendAgent extends BaseAgent {
     });
 
     const systemPrompt = this.buildSystemPrompt({
-      taskDescription: `Assess each repository below. For each, determine if it represents a significant trend. Be ruthless — most repos are noise. Only flag genuine signals.`,
+      taskDescription: `Assess each entity below. For each, determine if it represents a significant trend signal. Be ruthless — most are noise. Only flag genuine signals.`,
       topics: allTopics,
       responseFormat: `{
   "assessments": [
     {
-      "repo": "owner/name",
+      "repo": "entity identifier (e.g. owner/name or token symbol)",
       "isTrending": true/false,
       "confidence": 0.0-1.0,
-      "category": "ai|devtools|framework|library|app|other",
+      "category": "category label",
       "reasoning": "brief, no fluff",
       "predictedGrowth": "explosive|fast|moderate|slow",
       "keyFactors": ["factor1", "factor2"],
-      "estimatedStars30d": number
+      "estimatedStars30d": "estimated value in 30 days (number)"
     }
   ]
 }`,
     });
 
-    const userPrompt = `Analyze these ${repos.length} repositories:\n\n${repoBlocks.join('\n\n')}`;
+    const userPrompt = `Analyze these ${repos.length} entities:\n\n${repoBlocks.join('\n\n')}`;
 
     try {
       const result = await this.llm.json<BatchTrendResult>(systemPrompt, userPrompt);
@@ -206,10 +222,7 @@ export class TrendAgent extends BaseAgent {
 
   override filterEvents(events: WorldEvent[]): WorldEvent[] {
     return super.filterEvents(events).filter(
-      (e) => e.source === 'collector:github'
-        || e.source === 'collector:new-repos'
-        || e.source === 'collector:hn'
-        || e.source === 'agent:network',
+      (e) => e.source.startsWith('collector:') || e.source === 'agent:network',
     );
   }
 }

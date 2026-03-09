@@ -61,10 +61,13 @@ export class PredictAgent extends BaseAgent {
          this.sharedBus.getOutputs('tech').length > 0)
       : false;
 
-    // Raw repo data for concrete predictions (user prompt only)
-    const repoEvents = events.filter(
-      (e) => e.type === 'repo_trending' || e.type === 'repo_discovered' || e.type === 'new_repo_discovered',
-    );
+    // Raw entity data for concrete predictions (user prompt only)
+    // If domain context is set, accept all collector events.
+    const repoEvents = this.domainContext
+      ? events.filter(e => e.source.startsWith('collector:'))
+      : events.filter(
+          (e) => e.type === 'repo_trending' || e.type === 'repo_discovered' || e.type === 'new_repo_discovered',
+        );
 
     if (!hasBusData && repoEvents.length === 0) {
       console.log('    ⚠️  Predict Agent: no upstream data');
@@ -72,14 +75,23 @@ export class PredictAgent extends BaseAgent {
       return [];
     }
 
-    // Build compact repo list for user prompt
+    // Build compact entity list for user prompt
     const topRepos = repoEvents
       .sort((a, b) => b.importance - a.importance)
       .slice(0, 10)
       .map((e) => {
         const m = e.data['metadata'] as any;
         if (!m) return null;
-        return `- ${m.fullName}: ${m.stars} stars, ${m.language ?? 'Unknown'}, ${e.data['starsPerDay'] ?? '?'}/day`;
+        // Domain-agnostic: summarize key data fields
+        const parts = [m.fullName ?? m.name ?? m.id ?? '?'];
+        if (m.stars != null) parts.push(`${m.stars} stars`);
+        if (m.language) parts.push(m.language);
+        if (e.data['starsPerDay'] != null) parts.push(`${e.data['starsPerDay']}/day`);
+        if (e.data['price'] != null) parts.push(`$${e.data['price']}`);
+        if (e.data['change24h'] != null) parts.push(`24h: ${(e.data['change24h'] as number).toFixed(1)}%`);
+        if (e.data['change7d'] != null) parts.push(`7d: ${(e.data['change7d'] as number).toFixed(1)}%`);
+        if (e.data['marketCap'] != null) parts.push(`mcap: $${((e.data['marketCap'] as number) / 1e9).toFixed(1)}B`);
+        return `- ${parts.join(', ')}`;
       })
       .filter(Boolean)
       .join('\n');
@@ -91,14 +103,14 @@ export class PredictAgent extends BaseAgent {
     ];
 
     const systemPrompt = this.buildSystemPrompt({
-      taskDescription: 'Based on the following agent analyses, make 3-5 concrete, time-bound, verifiable predictions. Each prediction must be specific (a repo or technology), time-bound (within N days), verifiable (can be checked later), and include a confidence level.',
+      taskDescription: 'Based on the following agent analyses, make 3-5 concrete, time-bound, verifiable predictions. Each prediction must be specific (an entity or category), time-bound (within N days), verifiable (can be checked later), and include a confidence level.',
       topics: knowledgeTopics,
       responseFormat: `{
   "predictions": [
     {
       "statement": "specific prediction statement",
-      "metric": "stars|forks|ranking|adoption",
-      "target": "repo or tech name",
+      "metric": "the metric being predicted (e.g. stars, price, market_cap, adoption)",
+      "target": "entity name",
       "currentValue": 0,
       "predictedValue": 0,
       "timeframeDays": 30,
@@ -110,10 +122,9 @@ export class PredictAgent extends BaseAgent {
 }`,
     });
 
-    // User prompt: ONLY repo data. Trend/Network/Tech are in system prompt (Layer 3 briefing).
-    // Don't duplicate — duplication dilutes signal and confuses the model about what's authoritative.
+    // User prompt: ONLY entity data. Trend/Network/Tech are in system prompt (Layer 2 briefing).
     const userPrompt = topRepos
-      ? `Repos to predict:\n${topRepos}\n\nGenerate 3-5 specific, verifiable predictions.`
+      ? `Entities to predict:\n${topRepos}\n\nGenerate 3-5 specific, verifiable predictions.`
       : `Generate 3-5 specific, verifiable predictions based on the agent briefings above.`;
 
     try {
