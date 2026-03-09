@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "description": "A multi-agent world model engine that watches, learns, and predicts",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "src/api/index.ts",
+  "exports": {
+    ".": "./src/api/index.ts",
+    "./github": "./src/domains/github/adapter.ts",
+    "./engine": "./src/api/index.ts"
+  },
   "scripts": {
     "start": "tsx src/index.ts",
     "validate": "tsx scripts/validate.ts",

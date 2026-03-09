@@ -20,39 +20,44 @@ The prediction loop closes in days, not months. [Try it yourself.](#quick-start)
 
 ## 🧠 Architecture
 
+WorldMind separates the **generic engine** from **domain-specific adapters**.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     SharedContextBus                            │
-│   (summary-based inter-agent communication)                    │
-└──────────────────────────┬──────────────────────────────────────┘
-                          │
-    ┌─────────────────────┼─────────────────────┐
-    │                     │                     │
-    ▼                     ▼                     ▼
-┌─────────┐         ┌─────────┐           ┌─────────┐
-│ Trend   │────────▶│ Network │──────────▶│  Tech   │
-│ Agent   │         │ Agent   │           │  Agent  │
-└────┬────┘         └────┬────┘           └────┬────┘
-     │                   │                     │
-     └───────────────────┴─────────────────────┘
-                         │
-                         ▼
-                   ┌───────────┐
-                   │  Predict  │
-                   │   Agent   │
-                   └─────┬─────┘
-                         │
-                         ▼
-                   ┌───────────┐
-                   │ Challenge │ ◀── Stress-test
-                   │   Agent   │     every prediction
-                   └─────┬─────┘
-                         │
-                         ▼
-                   ┌───────────┐
-                   │   Round   │ ◀── Revise based on
-                   │    2      │     counter-evidence
-                   └───────────┘
+│                      WorldModel Engine                          │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │  Context Engine (5 layers)  │  SharedContextBus           │ │
+│  │  Knowledge Base             │  Semantic Memory (TF-IDF)   │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │  Agent Pipeline                                           │ │
+│  │  Observe → Analyze → Predict → Challenge → Revise         │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+        ┌──────────┐  ┌──────────┐  ┌──────────┐
+        │  GitHub  │  │  Crypto  │  │  Custom  │
+        │ Adapter  │  │ Adapter  │  │ Adapter  │
+        └──────────┘  └──────────┘  └──────────┘
+         5 agents       (yours)       (yours)
+         3 collectors
+```
+
+### GitHub Domain (Built-in)
+
+```
+Trend Agent → Network Agent ─┐
+               Tech Agent  ──┤
+                              ▼
+                        Predict Agent
+                              │
+                        Challenge Agent ← "Attack every prediction"
+                              │
+                        Round 2 Revision ← Accept valid challenges
 ```
 
 ### Context Engine (5 Layers)
@@ -71,22 +76,65 @@ Each agent sees the world through 5 context layers — inspired by [Anthropic's 
 
 ## 🚀 Quick Start
 
+### As a Library
+
+```ts
+import { WorldModel, GitHubDomainAdapter } from 'worldmind';
+
+// Use the built-in GitHub domain
+const world = new WorldModel({
+  domain: new GitHubDomainAdapter({ githubToken: process.env.GITHUB_TOKEN }),
+  llm: { apiKey: process.env.OPENAI_API_KEY },
+});
+
+// Run a full observe → reason → predict cycle
+const predictions = await world.runCycle();
+
+// Or predict a specific target
+const prediction = await world.predict({
+  target: 'facebook/react',
+  metric: 'stars',
+  timeframe: '30d',
+});
+```
+
+### Build Your Own Domain
+
+```ts
+import { WorldModel } from 'worldmind';
+
+// Any domain — just define entities, metrics, and knowledge
+const cryptoWorld = new WorldModel({
+  domain: {
+    name: 'crypto',
+    description: 'Cryptocurrency market dynamics',
+    entityTypes: ['token', 'protocol', 'exchange'],
+    metrics: ['price', 'volume', 'tvl'],
+    temporalRules: [
+      'Bull cycles last ~18 months on average',
+      'Halving events precede rallies by 3-6 months',
+    ],
+    initialKnowledge: [
+      { topic: 'cycles', content: 'Bear markets bottom when leverage is fully flushed', source: 'analysis', relevance: 0.9 },
+    ],
+  },
+});
+```
+
+### CLI
+
 ```bash
-# Clone
 git clone https://github.com/Myles-Liu/worldmind.git
-cd worldmind
+cd worldmind && npm install
+cp .env.example .env  # Add your API keys
 
-# Install
-npm install
-
-# Configure (or use defaults — will use OpenAI API)
-cp .env.example .env
-# Edit .env with your API keys
-
-# Run discovery + prediction (analyzes top 10 new repos)
+# Full pipeline: discover → analyze → predict → challenge → revise
 npx tsx scripts/run-discovery-analysis.ts --top 10
 
-# Or run backtest to verify prediction accuracy
+# Predict a specific repo
+npx tsx scripts/predict-repo.ts karpathy/autoresearch
+
+# Backtest against historical data
 npx tsx scripts/backtest.ts --predict-only --fast
 ```
 
@@ -124,35 +172,39 @@ npx tsx scripts/backtest.ts --predict-only --fast
 ```
 worldmind/
 ├── src/
-│   ├── agents/           # 5 specialized agents
+│   ├── api/              # Public API entry point
+│   │   └── index.ts      # WorldModel, types, re-exports
+│   ├── domains/          # Domain adapters (pluggable)
+│   │   ├── types.ts      # DomainAdapter interface, WorldModel class
+│   │   └── github/       # Built-in GitHub domain
+│   │       └── adapter.ts
+│   ├── agents/           # Agent implementations
+│   │   ├── base-agent.ts # Generic base (domain-agnostic)
 │   │   ├── trend.ts      # Spot emerging patterns
-│   │   ├── network.ts    # Map relationships
-│   │   ├── tech.ts       # Track tech lifecycles
-│   │   ├── predict.ts    # Make predictions
-│   │   └── challenge.ts  # Stress-test predictions
-│   ├── collectors/       # Data sources
-│   │   ├── discovery.ts  # Find new repos
-│   │   ├── hn.ts        # HackerNews scanner
-│   │   └── star-history.ts
-│   ├── memory/          # Context & storage
-│   │   ├── semantic-memory.ts   # TF-IDF retrieval
-│   │   ├── entity-store.ts     # Entity profiles
-│   │   ├── knowledge-base.ts   # Domain knowledge
-│   │   └── prediction-store.ts
-│   ├── llm/             # LLM orchestration
+│   │   ├── network.ts    # Map entity relationships
+│   │   ├── tech.ts       # Track technology lifecycles
+│   │   ├── predict.ts    # Synthesize into predictions
+│   │   └── challenge.ts  # Stress-test every prediction
+│   ├── llm/              # LLM orchestration
 │   │   ├── context-engine.ts   # 5-layer prompt builder
 │   │   └── client.ts           # OpenAI-compatible client
-│   ├── context/         # Inter-agent communication
+│   ├── context/          # Inter-agent communication
 │   │   └── shared-bus.ts       # Summary-based messaging
-│   └── world-model/     # Belief state
-│       └── belief-state.ts
+│   ├── memory/           # Storage & retrieval
+│   │   ├── semantic-memory.ts  # TF-IDF retrieval, no vector DB
+│   │   ├── knowledge-base.ts   # Domain knowledge injection
+│   │   └── prediction-store.ts
+│   └── collectors/       # Data sources (GitHub-specific)
+│       ├── discovery.ts  # Multi-source aggregator
+│       ├── hn.ts         # HackerNews scanner
+│       └── star-history.ts
 ├── scripts/
-│   ├── run-discovery-analysis.ts  # Full pipeline
-│   ├── backtest.ts                # Verify predictions
-│   └── collect-benchmarks.ts      # Build decay models
-├── docs/
-│   └── anthropic-context-engineering-notes.md
-└── README.md
+│   ├── run-discovery-analysis.ts  # Full pipeline (GitHub)
+│   ├── predict-repo.ts            # Predict a single repo
+│   ├── backtest.ts                # Validate against history
+│   └── verify-predictions.ts      # Check past predictions
+└── docs/
+    └── anthropic-context-engineering-notes.md
 ```
 
 ## 🛠️ Tech Stack
