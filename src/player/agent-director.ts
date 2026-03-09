@@ -62,16 +62,19 @@ export class AgentDirector {
   private memoryManager: AgentMemoryManager;
   private personas: Map<number, AgentPersona> = new Map();
   private worldContext: string;
+  private batchSize: number;
 
   constructor(options: {
     llm: LLMClient;
     memoryManager: AgentMemoryManager;
     worldContext: string;
     personas: AgentPersona[];
+    batchSize?: number;
   }) {
     this.llm = options.llm;
     this.memoryManager = options.memoryManager;
     this.worldContext = options.worldContext;
+    this.batchSize = options.batchSize ?? 5;
     for (const p of options.personas) {
       this.personas.set(p.id, p);
     }
@@ -85,11 +88,10 @@ export class AgentDirector {
    * quality (enough context per agent) vs efficiency (fewer calls).
    */
   async directRound(input: DirectorRoundInput): Promise<AgentDecision[]> {
-    const BATCH_SIZE = 5;
     const batches: DirectorRoundInput['agents'][] = [];
 
-    for (let i = 0; i < input.agents.length; i += BATCH_SIZE) {
-      batches.push(input.agents.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < input.agents.length; i += this.batchSize) {
+      batches.push(input.agents.slice(i, i + this.batchSize));
     }
 
     const allDecisions: AgentDecision[] = [];

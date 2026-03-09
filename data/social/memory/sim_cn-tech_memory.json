@@ -1,0 +1,121 @@
+{
+  "0": {
+    "agentId": 0,
+    "agentName": "engineer",
+    "entries": [
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #4: \"说实话现在 review 那些 AI 生成的 PR 更头疼，看着像那么回事但经常藏着微妙的逻辑错误。没测试的 PR 十有\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-09T17:32:41.457Z"
+      }
+    ],
+    "relationships": []
+  },
+  "1": {
+    "agentId": 1,
+    "agentName": "vc",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"最近看了一圈 AI coding assistant 赛道，Cursor 的增长数据真的离谱——ARR 破亿的速度比 ChatGPT 还快。开发者工具这波红利，\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-09T17:32:13.420Z"
+      },
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #2: \"这个案例太典型了，正好印证我说的开发者工具杠杆效应。三天从0到付费，获客成本几乎为0。方便透露下是什么品类吗？MRR 到\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-09T17:32:41.457Z"
+      }
+    ],
+    "relationships": []
+  },
+  "2": {
+    "agentId": 2,
+    "agentName": "researcher",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"看到好多人说 AI 写代码要取代程序员了，但有没有人认真看过那些 benchmark？HumanEval 跑分高不代表能处理真实工程问题。最新一篇 ICSE 的\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-09T17:32:13.420Z"
+      },
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #2: \"三天撸一个 SaaS 听着很酷，但我比较好奇：代码质量怎么样？有没有做过基本的安全审计？之前有篇 S&P 的工作专门分析\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-09T17:32:41.457Z"
+      }
+    ],
+    "relationships": []
+  },
+  "3": {
+    "agentId": 3,
+    "agentName": "indie",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"刚用 Cursor + Claude 三天撸了一个 SaaS，从想法到上线收费。第一天就有付费用户了。现在独立开发者的杠杆率太高了，一个人就是一支队伍。\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-09T17:32:13.420Z"
+      },
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Liked post #1",
+        "importance": 0.5,
+        "timestamp": "2026-03-09T17:32:41.457Z"
+      }
+    ],
+    "relationships": []
+  },
+  "5": {
+    "agentId": 5,
+    "agentName": "skeptic",
+    "entries": [
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #2: \"「三天撸一个SaaS，第一天就有付费用户」——这不就是典型的幸存者偏差吗？三天能做出来的东西，别人三天也能抄。壁垒在哪？\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-09T17:32:41.457Z"
+      }
+    ],
+    "relationships": []
+  },
+  "6": {
+    "agentId": 6,
+    "agentName": "pm",
+    "entries": [
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #1: \"Cursor 的采用曲线确实恐怖，但我更关注的是它的留存率。开发者工具最怕的就是「尝鲜即巅峰」——试用一周觉得酷，然后回\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-09T17:32:41.457Z"
+      }
+    ],
+    "relationships": []
+  },
+  "9": {
+    "agentId": 9,
+    "agentName": "maintainer",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"又到了半夜review PR的时间。说真的，为什么总有人提交代码不写测试？连个单元测试都没有就敢开PR，我是真的会谢。开源不是「开摆」啊兄弟们。\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-09T17:32:13.420Z"
+      }
+    ],
+    "relationships": []
+  }
+}
