@@ -1,18 +1,18 @@
 {
-  "timestamp": "2026-03-09T08:08:39.323Z",
+  "timestamp": "2026-03-09T08:13:28.317Z",
   "observationDays": 3,
   "repoCount": 1,
   "calibration": {
-    "meanError": -0.32081266241436335,
-    "meanAbsError": 0.32081266241436335,
-    "medianAbsError": 0.32081266241436335,
+    "meanError": 0.04535790219702339,
+    "meanAbsError": 0.04535790219702339,
+    "medianAbsError": 0.04535790219702339,
     "overestimateRate": 0,
-    "calibrationBias": -0.32081266241436335,
+    "calibrationBias": 0.04535790219702339,
     "byConfidenceBucket": [
       {
         "bucket": "30-50%",
         "count": 1,
-        "accuracy": 0
+        "accuracy": 1
       },
       {
         "bucket": "50-70%",
@@ -34,13 +34,13 @@
   "results": [
     {
       "repo": "stanford-oval/storm",
-      "predicted": 11500,
+      "predicted": 17700,
       "actual": 16932,
-      "confidence": 0.42,
-      "error": -0.32081266241436335,
-      "absError": 0.32081266241436335,
-      "direction": "under"
+      "confidence": 0.35,
+      "error": 0.04535790219702339,
+      "absError": 0.04535790219702339,
+      "direction": "exact"
     }
   ],
-  "lesson": "Calibration from 1 backtests (observation window: 3 days):\n- Systematic bias: UNDERESTIMATES by 32% on average\n- Median absolute error: 32%\n- Overestimate rate: 0%\n- Correction factor: multiply raw predictions by 1.47 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence"
+  "lesson": "Calibration from 1 backtests (observation window: 3 days):\n- Systematic bias: OVERESTIMATES by 5% on average\n- Median absolute error: 5%\n- Overestimate rate: 0%\n- Correction factor: multiply raw predictions by 0.96 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence"
 }
