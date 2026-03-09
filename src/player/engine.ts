@@ -469,12 +469,12 @@ export class WorldEngine {
     try {
       const db = this.openDb();
       const rows = JSON.parse(db.query(
-        `SELECT p.post_id, p.user_id, u.user_name, p.content, p.num_likes, p.num_shares, p.created_at FROM post p LEFT JOIN user u ON p.user_id = u.user_id ORDER BY p.post_id DESC LIMIT ${limit}`
+        `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, p.content, p.num_likes, p.num_shares, p.created_at FROM post p LEFT JOIN user u ON p.user_id = u.user_id ORDER BY p.post_id DESC LIMIT ${limit}`
       ));
       return rows.map((r: any) => ({
         id: r.post_id,
         authorId: r.user_id,
-        authorName: r.user_name ?? `agent_${r.user_id}`,
+        authorName: r.display_name ?? r.user_name ?? `agent_${r.user_id}`,
         content: r.content ?? '',
         likes: r.num_likes ?? 0,
         comments: 0,
@@ -489,12 +489,12 @@ export class WorldEngine {
     try {
       const db = this.openDb();
       const rows = JSON.parse(db.query(
-        `SELECT p.post_id, p.user_id, u.user_name, p.content, p.num_likes, p.num_shares, p.created_at FROM post p LEFT JOIN user u ON p.user_id = u.user_id WHERE p.post_id = ${postId}`
+        `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, p.content, p.num_likes, p.num_shares, p.created_at FROM post p LEFT JOIN user u ON p.user_id = u.user_id WHERE p.post_id = ${postId}`
       ));
       if (!rows[0]) return null;
       const r = rows[0];
       return {
-        id: r.post_id, authorId: r.user_id, authorName: r.user_name ?? `agent_${r.user_id}`,
+        id: r.post_id, authorId: r.user_id, authorName: r.display_name ?? r.user_name ?? `agent_${r.user_id}`,
         content: r.content ?? '', likes: r.num_likes ?? 0, comments: 0,
         reposts: r.num_shares ?? 0, createdAt: r.created_at ?? '', isPlayer: r.user_id === this.playerId,
       };
@@ -505,11 +505,11 @@ export class WorldEngine {
     try {
       const db = this.openDb();
       const rows = JSON.parse(db.query(
-        `SELECT c.comment_id, c.post_id, c.user_id, u.user_name, c.content, c.created_at FROM comment c LEFT JOIN user u ON c.user_id = u.user_id WHERE c.post_id = ${postId} ORDER BY c.comment_id`
+        `SELECT c.comment_id, c.post_id, c.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, c.content, c.created_at FROM comment c LEFT JOIN user u ON c.user_id = u.user_id WHERE c.post_id = ${postId} ORDER BY c.comment_id`
       ));
       return rows.map((r: any) => ({
         id: r.comment_id, postId: r.post_id, authorId: r.user_id,
-        authorName: r.user_name ?? `agent_${r.user_id}`,
+        authorName: r.display_name ?? r.user_name ?? `agent_${r.user_id}`,
         content: r.content ?? '', createdAt: r.created_at ?? '',
         isPlayer: r.user_id === this.playerId,
       }));

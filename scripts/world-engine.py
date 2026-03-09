@@ -432,9 +432,9 @@ async def main():
                 conn = sqlite3.connect(db_path)
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute(
-                    """SELECT p.id as post_id, p.user_id, p.content, p.num_likes, 
-                              u.user_name as author_name,
-                              (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id) as num_comments
+                    """SELECT p.post_id, p.user_id, p.content, p.num_likes, 
+                              COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as author_name,
+                              (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.post_id) as num_comments
                        FROM post p
                        JOIN user u ON p.user_id = u.user_id
                        ORDER BY p.created_at DESC
@@ -457,9 +457,9 @@ async def main():
                 notifs = []
                 # Recent comments on agent's posts
                 cursor = conn.execute(
-                    """SELECT 'comment' as type, u.user_name as from_agent, c.content
+                    """SELECT 'comment' as type, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as from_agent, c.content
                        FROM comment c
-                       JOIN post p ON c.post_id = p.id
+                       JOIN post p ON c.post_id = p.post_id
                        JOIN user u ON c.user_id = u.user_id
                        WHERE p.user_id = ? AND c.user_id != ?
                        ORDER BY c.created_at DESC LIMIT ?""",
@@ -468,7 +468,7 @@ async def main():
                 notifs.extend([dict(row) for row in cursor.fetchall()])
                 # Recent follows
                 cursor = conn.execute(
-                    """SELECT 'follow' as type, u.user_name as from_agent, '' as content
+                    """SELECT 'follow' as type, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as from_agent, '' as content
                        FROM follow f
                        JOIN user u ON f.follower_id = u.user_id
                        WHERE f.followee_id = ?

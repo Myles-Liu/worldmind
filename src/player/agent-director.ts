@@ -154,6 +154,9 @@ For each character, you must decide their ONE action this round based on:
 - Controversial posts should get reactions. Boring posts can be ignored
 - Relationships matter: friends engage more, rivals challenge each other
 - Keep posts concise and natural. No one writes essays on social media
+- **CRITICAL: At least 30% of all actions should be interactions with existing posts (comment or like), NOT new posts.** A real social feed is mostly reactions, not broadcasts. If the feed has interesting posts, PREFER commenting/liking over creating new posts.
+- When commenting, reference the specific post content. Show you actually read it.
+- When there are controversial or interesting posts in the feed, at least one character should react.
 
 # OUTPUT FORMAT
 

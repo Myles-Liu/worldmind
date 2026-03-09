@@ -205,12 +205,11 @@ async function main() {
 
     info(`${active.length}/${personas.length} agents active this round`);
 
-    // Gather context for each active agent
-    const agentInputs = await Promise.all(active.map(async (persona) => {
-      const [feedRaw, notifsRaw] = await Promise.all([
-        engine.queryAgentFeed(persona.id, 8),
-        engine.queryAgentNotifications(persona.id, 5),
-      ]);
+    // Gather context for each active agent (sequential to avoid stdout race)
+    const agentInputs = [];
+    for (const persona of active) {
+      const feedRaw = await engine.queryAgentFeed(persona.id, 8);
+      const notifsRaw = await engine.queryAgentNotifications(persona.id, 5);
 
       const feed = feedRaw.map(f => ({
         postId: f.post_id,
@@ -223,8 +222,8 @@ async function main() {
       const notifications = notifsRaw.map(n => `${n.from_agent} ${n.type}: ${n.content}`.trim());
       const memory = memoryManager.getMemorySummary(persona.id);
 
-      return { persona, feed, memory, notifications };
-    }));
+      agentInputs.push({ persona, feed, memory, notifications });
+    }
 
     // Director decides
     info('Director thinking...');
