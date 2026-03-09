@@ -186,7 +186,9 @@ async def main():
     player_id = None
     if player_username:
         for aid, agent in agents_list:
-            if hasattr(agent, 'user_info') and agent.user_info.get('user_name') == player_username:
+            ui = getattr(agent, 'user_info', None)
+            uname = getattr(ui, 'user_name', None) if ui else None
+            if uname == player_username:
                 player_id = aid
                 break
         if player_id is None:
@@ -254,7 +256,7 @@ async def main():
 
             emit({"type": "step_done", "rounds": rounds})
 
-        elif cmd_type == "player_action":
+        elif cmd_type in ("player_action", "player_action_and_step"):
             action = cmd.get("action", {})
             pid = cmd.get("playerId", player_id)
             if pid is None:
@@ -273,6 +275,7 @@ async def main():
 
             atype = action.get("type", "")
             try:
+                # Execute player action
                 if atype == "post":
                     step_actions = {
                         player_agent: ManualAction(
@@ -310,6 +313,20 @@ async def main():
                     await env.step(step_actions)
                 else:
                     log(f"[engine] Unknown player action: {atype}")
+
+                # If combined command, also let agents react
+                if cmd_type == "player_action_and_step":
+                    n_active = random.randint(
+                        max(1, len(agents_list) // 3),
+                        max(2, len(agents_list) * 2 // 3),
+                    )
+                    non_player = [(aid, ag) for aid, ag in agents_list if aid != pid]
+                    active = random.sample(non_player, min(n_active, len(non_player)))
+                    actions = {agent: LLMAction() for _, agent in active}
+                    try:
+                        await env.step(actions)
+                    except Exception as e:
+                        log(f"[engine] Agent step error: {e}")
 
                 emit({"type": "player_action_done", "action": atype})
             except Exception as e:

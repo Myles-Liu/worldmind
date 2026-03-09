@@ -62,15 +62,20 @@ export class WorldEngine {
   async playerAct(action: PlayerAction): Promise<WorldState> {
     if (!this.running) throw new Error('World not running. Call init() first.');
 
-    // Send player action to OASIS
-    await this.sendCommand({
-      type: 'player_action',
-      action,
-      playerId: this.playerId,
-    });
-
-    // Advance one round (agents react)
-    await this.sendCommand({ type: 'step', rounds: 1 });
+    if (action.type === 'feed' || action.type === 'notifications' || action.type === 'profile') {
+      // Read-only actions — don't advance time, don't increment round
+      return this.getWorldState();
+    } else if (action.type === 'wait') {
+      // Just advance one round
+      await this.sendCommand({ type: 'step', rounds: 1 });
+    } else {
+      // Player action + agents react in one command
+      await this.sendCommand({
+        type: 'player_action_and_step',
+        action,
+        playerId: this.playerId,
+      });
+    }
     this.round++;
 
     // Collect notifications for player
@@ -224,22 +229,33 @@ export class WorldEngine {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    // Wait for ready signal
+    // Wait for ready signal (tolerant of non-JSON lines on stdout)
     await new Promise<void>((resolve, reject) => {
       let buffer = '';
+      const timeout = setTimeout(() => {
+        reject(new Error('OASIS init timeout (300s). Check stderr for errors.'));
+      }, 300_000);
+
       const onData = (chunk: Buffer) => {
         buffer += chunk.toString();
         const lines = buffer.split('\n');
+        buffer = lines.pop()!; // keep incomplete line
         for (const line of lines) {
-          if (line.includes('"type":"ready"')) {
-            const msg = JSON.parse(line.trim());
-            this.playerId = msg.player_id ?? null;
-            this.process!.stdout!.removeListener('data', onData);
-            resolve();
-            return;
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const msg = JSON.parse(trimmed);
+            if (msg.type === 'ready') {
+              this.playerId = msg.player_id ?? null;
+              clearTimeout(timeout);
+              this.process!.stdout!.removeListener('data', onData);
+              resolve();
+              return;
+            }
+          } catch {
+            // Non-JSON line from OASIS internals — ignore
           }
         }
-        buffer = lines.pop()!;
       };
       this.process!.stdout!.on('data', onData);
       this.process!.stderr!.on('data', (chunk: Buffer) => {
@@ -247,6 +263,7 @@ export class WorldEngine {
         if (msg) process.stderr.write(`[OASIS] ${msg}\n`);
       });
       this.process!.on('exit', (code) => {
+        clearTimeout(timeout);
         if (!this.running) return;
         reject(new Error(`OASIS exited with code ${code}`));
       });
@@ -261,30 +278,35 @@ export class WorldEngine {
       }
 
       let buffer = '';
+      const timeout = setTimeout(() => {
+        this.process!.stdout!.removeListener('data', onData);
+        resolve('{"type":"timeout"}');
+      }, 300_000);
+
       const onData = (chunk: Buffer) => {
         buffer += chunk.toString();
         const lines = buffer.split('\n');
+        buffer = lines.pop()!;
         for (const line of lines) {
-          if (line.trim().startsWith('{')) {
-            try {
-              JSON.parse(line.trim());
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const msg = JSON.parse(trimmed);
+            // Only resolve on our protocol messages (not OASIS internal JSON)
+            if (msg.type) {
+              clearTimeout(timeout);
               this.process!.stdout!.removeListener('data', onData);
-              resolve(line.trim());
+              resolve(trimmed);
               return;
-            } catch { /* not complete JSON */ }
+            }
+          } catch {
+            // Non-JSON line — skip
           }
         }
-        buffer = lines.pop()!;
       };
 
       this.process!.stdout!.on('data', onData);
       this.process!.stdin!.write(JSON.stringify(cmd) + '\n');
-
-      // Timeout after 120s
-      setTimeout(() => {
-        this.process!.stdout!.removeListener('data', onData);
-        resolve('{"type":"timeout"}');
-      }, 120_000);
     });
   }
 
@@ -337,9 +359,14 @@ export class WorldEngine {
   private appendPlayerToProfiles(): void {
     if (!this.config.profilePath || !this.config.player) return;
     const content = readFileSync(this.config.profilePath, 'utf-8');
-    const playerLine = `${this.config.player.username},"${this.config.player.displayName}","${this.config.player.bio}"`;
-    // Append player as last line
-    writeFileSync(this.config.profilePath, content.trimEnd() + '\n' + playerLine + '\n', 'utf-8');
+    // CSV columns: username,description,user_char
+    const desc = this.config.player.displayName.replace(/"/g, '""');
+    const char = this.config.player.bio.replace(/"/g, '""');
+    const playerLine = `${this.config.player.username},"${desc}","${char}"`;
+    // Don't modify original file — write to a temp copy
+    const tmpPath = this.config.profilePath.replace('.csv', '_with_player.csv');
+    writeFileSync(tmpPath, content.trimEnd() + '\n' + playerLine + '\n', 'utf-8');
+    this.config.profilePath = tmpPath;
   }
 
   // ─── Internal: SQLite queries ───────────────────────────────
