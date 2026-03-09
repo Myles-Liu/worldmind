@@ -47,11 +47,24 @@ export class PredictionStore {
   }
 
   add(prediction: Omit<StoredPrediction, 'id' | 'status'>): void {
-    this.predictions.push({
+    // Dedup: if a pending prediction for the same target+timeframe exists,
+    // replace it with the newer one (latest pipeline run wins).
+    const existingIdx = this.predictions.findIndex(p =>
+      p.status === 'pending' &&
+      p.target === prediction.target &&
+      p.timeframeDays === prediction.timeframeDays,
+    );
+    const entry: StoredPrediction = {
       ...prediction,
       id: `pred_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       status: 'pending',
-    });
+    };
+    if (existingIdx >= 0) {
+      entry.id = this.predictions[existingIdx]!.id; // keep original id for tracking
+      this.predictions[existingIdx] = entry;
+    } else {
+      this.predictions.push(entry);
+    }
   }
 
   getPending(): StoredPrediction[] {

@@ -439,6 +439,47 @@ async function main() {
   await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
   console.log(`\n  💾 Full report saved to ${reportPath}`);
 
+  // ── Store predictions for future verification ─────────────────
+
+  const predStore = new PredictionStore();
+  await predStore.load();
+
+  // Prefer finalized (post-debate) predictions; fall back to Round 1
+  const predsToStore = allOutputs.filter(o => o.outputType === 'prediction_finalized');
+  const round1Only = allOutputs
+    .filter(o => o.outputType === 'prediction_created')
+    .filter(o => !predsToStore.some(f => f.data['target'] === o.data['target']));
+  const allPreds = [...predsToStore, ...round1Only];
+
+  for (const o of allPreds) {
+    const d = o.data;
+    const target = (d['target'] ?? d['repo'] ?? '') as string;
+    // Only store predictions with valid owner/repo format — skip vague targets
+    if (!target || !target.match(/^[\w.-]+\/[\w.-]+$/)) {
+      console.log(`     ⏭️  Skipping non-repo target: "${target}"`);
+      continue;
+    }
+
+    predStore.add({
+      createdAt: new Date().toISOString(),
+      cycle: 1,
+      statement: `${target} reaches ${d['revisedValue'] ?? d['predictedValue']} stars in ${d['timeframeDays']}d`,
+      target,
+      metric: 'stars',
+      currentValue: d['currentValue'] as number ?? 0,
+      predictedValue: (d['revisedValue'] ?? d['predictedValue']) as number,
+      timeframeDays: d['timeframeDays'] as number ?? 30,
+      confidence: o.confidence,
+      evidence: (d['evidence'] ?? d['accepted_challenges'] ?? []) as string[],
+      reasoning: o.reasoning,
+      challenges: (d['rejected_challenges'] ?? []) as string[],
+    });
+  }
+
+  await predStore.save();
+  console.log(`  📝 ${allPreds.length} prediction(s) stored for verification (${predStore.size} total)`);
+  console.log(`     Run \`npx tsx scripts/verify-predictions.ts\` to check due predictions`);
+
   // ── Summary ───────────────────────────────────────────────────
 
   const duration = ((Date.now() - startTime) / 1000).toFixed(1);
