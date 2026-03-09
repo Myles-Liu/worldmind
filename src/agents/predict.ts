@@ -33,10 +33,10 @@ export class PredictAgent extends BaseAgent {
     const target = data['target'] as string ?? '?';
     if (outputType === 'prediction_finalized') {
       const val = data['revisedValue'] ?? data['predictedValue'];
-      return `${target}: ${val} ${data['metric'] ?? 'stars'} in ${data['timeframeDays']}d (${Math.round(confidence * 100)}%) [final]`;
+      return `${target}: ${val} ${data['metric'] ?? 'value'} in ${data['timeframeDays']}d (${Math.round(confidence * 100)}%) [final]`;
     }
     const val = data['predictedValue'];
-    return `${target}: ${val} ${data['metric'] ?? 'stars'} in ${data['timeframeDays']}d (${Math.round(confidence * 100)}%)`;
+    return `${target}: ${val} ${data['metric'] ?? 'value'} in ${data['timeframeDays']}d (${Math.round(confidence * 100)}%)`;
   }
 
   // Historical accuracy for calibration
@@ -263,7 +263,7 @@ ${debateContext}`;
             'prediction_finalized',
             {
               target: rev.target,
-              metric: original?.data['metric'] ?? 'stars',
+              metric: original?.data['metric'] ?? 'value',
               originalValue: rev.originalValue,
               revisedValue: rev.revisedValue,
               originalConfidence: rev.originalConfidence,

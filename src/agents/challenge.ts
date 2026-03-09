@@ -76,7 +76,7 @@ export class ChallengeAgent extends BaseAgent {
           const evidence = (d['evidence'] as string[]) ?? [];
           // Only pass top 3 evidence points, truncated
           const topEvidence = evidence.slice(0, 3).map(e => e.slice(0, 100));
-          return `#${i + 1} ${d['target'] ?? '?'}: ${d['currentValue'] ?? '?'} → ${d['predictedValue'] ?? '?'} ${d['metric'] ?? 'stars'} in ${d['timeframeDays'] ?? '?'}d (conf ${Math.round(o.confidence * 100)}%). Key evidence: ${topEvidence.join('; ') || 'none'}`;
+          return `#${i + 1} ${d['target'] ?? '?'}: ${d['currentValue'] ?? '?'} → ${d['predictedValue'] ?? '?'} ${d['metric'] ?? 'value'} in ${d['timeframeDays'] ?? '?'}d (conf ${Math.round(o.confidence * 100)}%). Key evidence: ${topEvidence.join('; ') || 'none'}`;
         })
         .join('\n');
 
@@ -90,7 +90,7 @@ export class ChallengeAgent extends BaseAgent {
           const d = e.data;
           const evidence = (d['evidence'] as string[]) ?? [];
           const topEvidence = evidence.slice(0, 3).map(ev => ev.slice(0, 100));
-          return `#${i + 1} ${d['target'] ?? '?'}: ${d['currentValue'] ?? '?'} → ${d['predictedValue'] ?? '?'} ${d['metric'] ?? 'stars'} in ${d['timeframeDays'] ?? '?'}d (conf ${Math.round(e.importance * 100)}%). Key evidence: ${topEvidence.join('; ') || 'none'}`;
+          return `#${i + 1} ${d['target'] ?? '?'}: ${d['currentValue'] ?? '?'} → ${d['predictedValue'] ?? '?'} ${d['metric'] ?? 'value'} in ${d['timeframeDays'] ?? '?'}d (conf ${Math.round(e.importance * 100)}%). Key evidence: ${topEvidence.join('; ') || 'none'}`;
         })
         .join('\n');
 
