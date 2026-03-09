@@ -33,9 +33,9 @@
   },
   {
     "topic": "prediction_calibration",
-    "content": "Calibration from 1 backtests (observation window: 3 days):\n- Systematic bias: OVERESTIMATES by 5% on average\n- Median absolute error: 5%\n- Overestimate rate: 0%\n- Correction factor: multiply raw predictions by 0.96 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence",
+    "content": "Calibration from 1 backtests (observation window: 3 days):\n- Systematic bias: UNDERESTIMATES by 32% on average\n- Median absolute error: 32%\n- Overestimate rate: 0%\n- Correction factor: multiply raw predictions by 1.47 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence",
     "relevance": 1,
     "source": "backtest",
-    "lastUpdated": "2026-03-09T07:56:24.278Z"
+    "lastUpdated": "2026-03-09T08:08:39.324Z"
   }
 ]
