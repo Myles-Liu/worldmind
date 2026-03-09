@@ -138,6 +138,7 @@ export class PredictAgent extends BaseAgent {
             Math.min(1, Math.max(0, pred.confidence)),
             pred.reasoning,
             pred.target ? [`repo:${pred.target}`] : [],
+            `${pred.target}: ${pred.currentValue}→${pred.predictedValue} ${pred.metric} in ${pred.timeframeDays}d (${Math.round(pred.confidence * 100)}%)`,
           ),
         );
       }
@@ -266,6 +267,7 @@ ${debateContext}`;
             Math.min(1, Math.max(0, rev.revisedConfidence)),
             rev.reasoning,
             original?.relatedEntities ?? [],
+            `${rev.target}: ${rev.originalValue}→${rev.revisedValue} (${Math.round(rev.revisedConfidence * 100)}%), ${rev.accepted_challenges.length} challenges accepted`,
           ),
         );
       }

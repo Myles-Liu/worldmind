@@ -58,8 +58,6 @@ export const DEFAULT_AGENT_DEPENDENCIES: AgentDependencies = {
 };
 
 // ─── Briefing Formatters ────────────────────────────────────────
-
-// ─── Briefing Formatters ────────────────────────────────────────
 // Each formatter uses the `summary` field from AgentOutput.
 // Summaries are set by the producing agent — not re-parsed here.
 // This keeps the bus thin and avoids coupling to data schemas.
@@ -208,13 +206,12 @@ export class SharedContextBus {
       if (formatter) {
         briefings.push(formatter(outputs));
       } else {
-        // Fallback: generic formatting for unknown agent types
+        // Fallback: use summaries, not full reasoning
         if (outputs.length > 0) {
-          const summary = outputs
+          const lines = outputs
             .slice(0, 5)
-            .map(o => `• [${o.outputType}] ${o.reasoning} (conf: ${Math.round(o.confidence * 100)}%)`)
-            .join('\n');
-          briefings.push(`${dep} Agent:\n${summary}`);
+            .map(o => `• ${o.summary || `[${o.outputType}] ${Math.round(o.confidence * 100)}%`}`);
+          briefings.push(`${dep}:\n${lines.join('\n')}`);
         }
       }
     }
@@ -247,7 +244,9 @@ export class SharedContextBus {
       if (formatter) {
         parts.push(formatter(outputs));
       } else {
-        parts.push(`${agentName}: ${outputs.length} output(s) — ${outputs.map(o => o.reasoning).join('; ')}`);
+        // Fallback: use summaries
+        const lines = outputs.map(o => `• ${o.summary || `[${o.outputType}] ${Math.round(o.confidence * 100)}%`}`);
+        parts.push(`${agentName}:\n${lines.join('\n')}`);
       }
     }
 
