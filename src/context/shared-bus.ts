@@ -59,118 +59,34 @@ export const DEFAULT_AGENT_DEPENDENCIES: AgentDependencies = {
 
 // ─── Briefing Formatters ────────────────────────────────────────
 
-/**
- * Format trend signal outputs into a concise briefing.
- */
+// ─── Briefing Formatters ────────────────────────────────────────
+// Each formatter uses the `summary` field from AgentOutput.
+// Summaries are set by the producing agent — not re-parsed here.
+// This keeps the bus thin and avoids coupling to data schemas.
+
 function formatTrendBriefing(outputs: AgentOutput[]): string {
-  if (outputs.length === 0) return 'Trend Agent: No significant signals detected this cycle.';
-
-  const signals = outputs
-    .filter(o => o.outputType === 'trend_signal')
-    .sort((a, b) => b.confidence - a.confidence);
-
-  if (signals.length === 0) return 'Trend Agent: No significant signals detected this cycle.';
-
-  const lines = signals.map(s => {
-    const repo = s.data['repo'] as string ?? 'Unknown';
-    const growth = s.data['predictedGrowth'] as string ?? 'unknown';
-    const stars = s.data['stars'] as number ?? 0;
-    const starsPerDay = s.data['starsPerDay'] as number ?? 0;
-    const factors = (s.data['keyFactors'] as string[]) ?? [];
-    const conf = Math.round(s.confidence * 100);
-    return `• ${repo} — ${growth} growth, ${stars} stars (${starsPerDay}/day), conf: ${conf}%. ${factors.length > 0 ? `Key factors: ${factors.join(', ')}` : ''}`;
-  });
-
-  return `Trend Agent identified ${signals.length} signal(s):\n${lines.join('\n')}`;
+  const signals = outputs.filter(o => o.outputType === 'trend_signal');
+  if (signals.length === 0) return 'Trend: no signals.';
+  const lines = signals
+    .sort((a, b) => b.confidence - a.confidence)
+    .map(s => `• ${s.summary}`);
+  return `Trend (${signals.length}):\n${lines.join('\n')}`;
 }
 
-/**
- * Format network analysis outputs into a concise briefing.
- */
 function formatNetworkBriefing(outputs: AgentOutput[]): string {
-  if (outputs.length === 0) return 'Network Agent: No network analysis available this cycle.';
-
-  const updates = outputs.filter(o => o.outputType === 'network_update');
-  if (updates.length === 0) return 'Network Agent: No network analysis available this cycle.';
-
-  const parts: string[] = [];
-
-  for (const update of updates) {
-    const clusters = (update.data['clusters'] as Array<{ theme: string; repos: string[]; relationship: string }>) ?? [];
-    const keyPlayers = (update.data['keyPlayers'] as Array<{ repo: string; role: string; reasoning: string }>) ?? [];
-    const insights = (update.data['insights'] as string[]) ?? [];
-
-    if (clusters.length > 0) {
-      const clusterStr = clusters
-        .slice(0, 5)
-        .map(c => `  - ${c.theme} (${c.relationship}): ${c.repos.join(', ')}`)
-        .join('\n');
-      parts.push(`Clusters:\n${clusterStr}`);
-    }
-
-    if (keyPlayers.length > 0) {
-      const playerStr = keyPlayers
-        .slice(0, 5)
-        .map(p => `  - ${p.repo} [${p.role}]`)
-        .join('\n');
-      parts.push(`Key Players:\n${playerStr}`);
-    }
-
-    if (insights.length > 0) {
-      // Truncate each insight to 120 chars — downstream agents need conclusions, not essays
-      parts.push(`Insights: ${insights.slice(0, 2).map(s => s.slice(0, 120)).join('; ')}`);
-    }
-  }
-
-  return `Network Agent analysis:\n${parts.join('\n')}`;
+  if (outputs.length === 0) return 'Network: no analysis.';
+  return `Network:\n${outputs.map(o => `• ${o.summary}`).join('\n')}`;
 }
 
-/**
- * Format tech trend outputs into a concise briefing.
- */
 function formatTechBriefing(outputs: AgentOutput[]): string {
-  if (outputs.length === 0) return 'Tech Agent: No technology trends detected this cycle.';
-
-  const trends = outputs.filter(o => o.outputType === 'tech_trend');
-  if (trends.length === 0) return 'Tech Agent: No technology trends detected this cycle.';
-
-  const parts: string[] = [];
-
-  for (const trend of trends) {
-    const rising = (trend.data['risingTechnologies'] as Array<{ name: string; signal: string; confidence: number }>) ?? [];
-    const declining = (trend.data['decliningTechnologies'] as Array<{ name: string; signal: string; confidence: number }>) ?? [];
-    const patterns = (trend.data['emergingPatterns'] as string[]) ?? [];
-
-    if (rising.length > 0) {
-      parts.push(`Rising: ${rising.map(t => `${t.name} (${t.signal}, ${Math.round(t.confidence * 100)}%)`).join(', ')}`);
-    }
-    if (declining.length > 0) {
-      parts.push(`Declining: ${declining.map(t => `${t.name} (${t.signal}, ${Math.round(t.confidence * 100)}%)`).join(', ')}`);
-    }
-    if (patterns.length > 0) {
-      parts.push(`Patterns: ${patterns.join('; ')}`);
-    }
-  }
-
-  return `Tech Agent analysis:\n${parts.join('\n')}`;
+  if (outputs.length === 0) return 'Tech: no trends.';
+  return `Tech:\n${outputs.map(o => `• ${o.summary}`).join('\n')}`;
 }
 
-/**
- * Format prediction outputs into a concise briefing.
- */
 function formatPredictBriefing(outputs: AgentOutput[]): string {
-  if (outputs.length === 0) return 'Predict Agent: No predictions made this cycle.';
-
-  const predictions = outputs.filter(o => o.outputType === 'prediction_created');
-  if (predictions.length === 0) return 'Predict Agent: No predictions made this cycle.';
-
-  const lines = predictions.map(p => {
-    const statement = p.data['statement'] as string ?? 'Unknown';
-    const conf = Math.round(p.confidence * 100);
-    return `• ${statement} (confidence: ${conf}%)`;
-  });
-
-  return `Predict Agent made ${predictions.length} prediction(s):\n${lines.join('\n')}`;
+  const preds = outputs.filter(o => o.outputType === 'prediction_created');
+  if (preds.length === 0) return 'Predict: no predictions.';
+  return `Predict (${preds.length}):\n${preds.map(p => `• ${p.summary}`).join('\n')}`;
 }
 
 /**
@@ -238,9 +154,25 @@ export class SharedContextBus {
 
   /**
    * Get raw outputs from a specific agent.
+   * WARNING: Use getOutputSummaries() for downstream agents to reduce context bloat.
    */
   getOutputs(agentName: string): AgentOutput[] {
     return this.outputs.get(agentName) ?? [];
+  }
+
+  /**
+   * Get only summaries from an agent's outputs.
+   * Used by downstream agents to reduce context size.
+   * Each summary is max 100 chars.
+   */
+  getOutputSummaries(agentName: string): string[] {
+    const outputs = this.outputs.get(agentName) ?? [];
+    return outputs.map(o => {
+      // Use explicit summary if available, otherwise generate from data
+      if (o.summary) return o.summary.slice(0, 100);
+      const target = o.data['repo'] ?? o.data['target'] ?? o.data['technology'] ?? 'unknown';
+      return `[${o.outputType}] ${target}: ${o.reasoning.slice(0, 60)}...`;
+    });
   }
 
   /**

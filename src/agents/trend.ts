@@ -30,6 +30,18 @@ export class TrendAgent extends BaseAgent {
   readonly description =
     'Monitors GitHub trending data and identifies repos with abnormal growth patterns';
 
+  protected override autoSummary(
+    outputType: string,
+    data: Record<string, unknown>,
+    confidence: number,
+  ): string {
+    const repo = data['repo'] as string ?? '?';
+    const growth = data['predictedGrowth'] as string ?? '?';
+    const stars = data['stars'] as number ?? 0;
+    const spd = data['starsPerDay'] as number ?? 0;
+    return `${repo}: ${growth} growth, ${stars}★ (${spd}/d), ${Math.round(confidence * 100)}%`;
+  }
+
   async analyze(events: WorldEvent[]): Promise<AgentOutput[]> {
     await this.initialize();
 
@@ -179,6 +191,8 @@ export class TrendAgent extends BaseAgent {
             a.confidence,
             a.reasoning,
             entityId,
+            // One-line summary for downstream agents
+            `${a.repo}: ${a.predictedGrowth} growth, ${m?.stars ?? '?'}★ (${match?.data['starsPerDay'] ?? '?'}/d), est 30d: ${a.estimatedStars30d}★, ${Math.round(a.confidence * 100)}%`,
           ),
         );
       }

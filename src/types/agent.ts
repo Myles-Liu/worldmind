@@ -9,6 +9,8 @@ export interface AgentOutput {
   data: Record<string, unknown>;
   confidence: number; // 0-1
   reasoning: string;
+  /** One-line summary for downstream agents. Detail stays in `reasoning` + `data`. */
+  summary: string;
   timestamp: string;
   relatedEntities: string[]; // Entity IDs
 }

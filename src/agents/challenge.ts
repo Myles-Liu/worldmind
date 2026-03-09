@@ -24,6 +24,16 @@ export class ChallengeAgent extends BaseAgent {
   readonly description =
     'Critically examines predictions, finds counter-evidence, and identifies logical flaws and biases';
 
+  protected override autoSummary(
+    _outputType: string,
+    data: Record<string, unknown>,
+    confidence: number,
+  ): string {
+    const target = data['target'] as string ?? '?';
+    const verdict = data['verdict'] as string ?? '?';
+    return `${target}: ${verdict} (${Math.round(confidence * 100)}%)`;
+  }
+
   // Track which prediction types are most error-prone
   private errorPatterns: Map<string, { total: number; errors: number }> = new Map();
 
@@ -164,6 +174,7 @@ For each prediction, find weaknesses, counter-evidence, and logical flaws. Assig
             Math.min(1, Math.max(0, challenge.revisedConfidence)),
             challenge.reasoning,
             entityIds,
+            `${target}: ${challenge.verdict}, revised to ${challenge.revisedPredictedValue ?? 'N/A'} (${Math.round(challenge.revisedConfidence * 100)}%)`,
           ),
         );
       }

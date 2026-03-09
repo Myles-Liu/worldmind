@@ -25,6 +25,20 @@ export class PredictAgent extends BaseAgent {
   readonly description =
     'Synthesizes signals from all other agents into concrete, verifiable, time-bound predictions';
 
+  protected override autoSummary(
+    outputType: string,
+    data: Record<string, unknown>,
+    confidence: number,
+  ): string {
+    const target = data['target'] as string ?? '?';
+    if (outputType === 'prediction_finalized') {
+      const val = data['revisedValue'] ?? data['predictedValue'];
+      return `${target}: ${val} ${data['metric'] ?? 'stars'} in ${data['timeframeDays']}d (${Math.round(confidence * 100)}%) [final]`;
+    }
+    const val = data['predictedValue'];
+    return `${target}: ${val} ${data['metric'] ?? 'stars'} in ${data['timeframeDays']}d (${Math.round(confidence * 100)}%)`;
+  }
+
   // Historical accuracy for calibration
   private accuracyHistory: Array<{
     predicted: number;
@@ -37,139 +51,42 @@ export class PredictAgent extends BaseAgent {
   async analyze(events: WorldEvent[]): Promise<AgentOutput[]> {
     await this.initialize();
 
-    // ── Get upstream agent outputs from SharedContextBus (primary) ──
-    // The bus has structured outputs from Trend, Network, and Tech agents.
-    // Fall back to events for backward compatibility.
-    let trendOutputs: AgentOutput[] = [];
-    let networkOutputs: AgentOutput[] = [];
-    let techOutputs: AgentOutput[] = [];
+    // ── Check upstream data availability ──
+    // Upstream agent outputs are injected via SharedContextBus → Layer 2 briefing.
+    // We do NOT re-read raw outputs here — that would duplicate context.
+    // We only need to check if there's anything to predict on.
+    const hasBusData = this.sharedBus
+      ? (this.sharedBus.getOutputs('trend').length > 0 ||
+         this.sharedBus.getOutputs('network').length > 0 ||
+         this.sharedBus.getOutputs('tech').length > 0)
+      : false;
 
-    if (this.sharedBus) {
-      trendOutputs = this.sharedBus.getOutputs('trend');
-      networkOutputs = this.sharedBus.getOutputs('network');
-      techOutputs = this.sharedBus.getOutputs('tech');
-    }
-
-    // Fallback: check events for backward compat
-    const trendSignals = events.filter((e) => e.type === 'trend_signal');
-    const networkUpdates = events.filter((e) => e.type === 'network_update');
-    const techTrends = events.filter((e) => e.type === 'tech_trend');
-
-    const hasBusData = trendOutputs.length > 0 || networkOutputs.length > 0 || techOutputs.length > 0;
-    const hasEventData = trendSignals.length > 0 || networkUpdates.length > 0 || techTrends.length > 0;
-
-    // Raw repo data for concrete predictions
+    // Raw repo data for concrete predictions (user prompt only)
     const repoEvents = events.filter(
       (e) => e.type === 'repo_trending' || e.type === 'repo_discovered' || e.type === 'new_repo_discovered',
     );
 
-    if (!hasBusData && !hasEventData && repoEvents.length === 0) {
-      console.log('    ⚠️  Predict Agent: no upstream data (bus: 0, events: 0, repos: 0)');
+    if (!hasBusData && repoEvents.length === 0) {
+      console.log('    ⚠️  Predict Agent: no upstream data');
       await this.finalize();
       return [];
     }
 
-    // ── Build context strings from bus (preferred) or events (fallback) ──
-
-    let trendStr: string;
-    if (trendOutputs.length > 0) {
-      trendStr = trendOutputs
-        .filter(o => o.outputType === 'trend_signal')
-        .sort((a, b) => b.confidence - a.confidence)
-        .map(o => {
-          const d = o.data;
-          return `- ${d['repo'] ?? 'Unknown'}: ${d['predictedGrowth'] ?? ''} growth, stars: ${d['stars'] ?? 'N/A'}, stars/day: ${d['starsPerDay'] ?? 'N/A'}, confidence: ${Math.round(o.confidence * 100)}%, key factors: ${((d['keyFactors'] as string[]) ?? []).slice(0, 3).join('; ')}`;
-        }).join('\n') || 'No trend signals available';
-    } else if (trendSignals.length > 0) {
-      trendStr = trendSignals.map((e) => {
-        const d = e.data;
-        return `- ${d['repo'] ?? 'Unknown'}: ${d['predictedGrowth'] ?? ''} growth, stars/day: ${d['starsPerDay'] ?? 'N/A'}, confidence: ${e.importance}`;
-      }).join('\n');
-    } else {
-      trendStr = 'No trend signals available';
-    }
-
-    let networkStr: string;
-    if (networkOutputs.length > 0) {
-      networkStr = networkOutputs
-        .filter(o => o.outputType === 'network_update')
-        .map(o => {
-          const d = o.data;
-          const clusters = (d['clusters'] as any[]) ?? [];
-          const insights = (d['insights'] as string[]) ?? [];
-          const keyPlayers = (d['keyPlayers'] as any[]) ?? [];
-          const parts: string[] = [];
-          if (clusters.length > 0) {
-            parts.push(`Clusters: ${clusters.map((c: any) => `${c.theme} (${c.repos?.join(', ') ?? ''})`).join('; ')}`);
-          }
-          if (keyPlayers.length > 0) {
-            parts.push(`Key players: ${keyPlayers.map((p: any) => `${p.repo} [${p.role}]`).join(', ')}`);
-          }
-          if (insights.length > 0) {
-            parts.push(`Insights: ${insights.slice(0, 3).join('; ')}`);
-          }
-          return parts.join('\n');
-        }).join('\n') || 'No network analysis available';
-    } else if (networkUpdates.length > 0) {
-      networkStr = networkUpdates.map((e) => {
-        const d = e.data;
-        const clusters = (d['clusters'] as any[]) ?? [];
-        const insights = (d['insights'] as string[]) ?? [];
-        return `Clusters: ${clusters.map((c: any) => `${c.theme} (${c.relationship})`).join(', ')}\nInsights: ${insights.join('; ')}`;
-      }).join('\n');
-    } else {
-      networkStr = 'No network analysis available';
-    }
-
-    let techStr: string;
-    if (techOutputs.length > 0) {
-      techStr = techOutputs
-        .filter(o => o.outputType === 'tech_trend')
-        .map(o => {
-          const d = o.data;
-          const rising = (d['risingTechnologies'] as any[]) ?? [];
-          const declining = (d['decliningTechnologies'] as any[]) ?? [];
-          const patterns = (d['emergingPatterns'] as string[]) ?? [];
-          const parts: string[] = [];
-          if (rising.length > 0) {
-            parts.push(`Rising: ${rising.map((t: any) => `${t.name} (${t.signal}, ${Math.round((t.confidence ?? 0) * 100)}%)`).join(', ')}`);
-          }
-          if (declining.length > 0) {
-            parts.push(`Declining: ${declining.map((t: any) => `${t.name} (${t.signal})`).join(', ')}`);
-          }
-          if (patterns.length > 0) {
-            parts.push(`Emerging patterns: ${patterns.slice(0, 3).join('; ')}`);
-          }
-          return parts.join('\n');
-        }).join('\n') || 'No tech trend analysis available';
-    } else if (techTrends.length > 0) {
-      techStr = techTrends.map((e) => {
-        const d = e.data;
-        const rising = (d['risingTechnologies'] as any[]) ?? [];
-        const declining = (d['decliningTechnologies'] as any[]) ?? [];
-        return `Rising: ${rising.map((t: any) => `${t.name} (${t.signal})`).join(', ')}\nDeclining: ${declining.map((t: any) => `${t.name} (${t.signal})`).join(', ')}`;
-      }).join('\n');
-    } else {
-      techStr = 'No tech trend analysis available';
-    }
-
-    // Include top repo data for concrete predictions
+    // Build compact repo list for user prompt
     const topRepos = repoEvents
       .sort((a, b) => b.importance - a.importance)
       .slice(0, 10)
       .map((e) => {
         const m = e.data['metadata'] as any;
         if (!m) return null;
-        return `- ${m.fullName}: ${m.stars} stars, ${m.language ?? 'Unknown'} lang, stars/day: ${e.data['starsPerDay'] ?? 'N/A'}`;
+        return `- ${m.fullName}: ${m.stars} stars, ${m.language ?? 'Unknown'}, ${e.data['starsPerDay'] ?? '?'}/day`;
       })
       .filter(Boolean)
       .join('\n');
 
-    // Build knowledge context — always include calibration data
+    // Build knowledge topics — calibration is always relevant
     const knowledgeTopics = [
-      'prediction_calibration',  // Always load calibration data from backtests
-      ...trendOutputs.map(o => (o.data['repo'] as string) ?? '').filter(Boolean),
-      ...trendSignals.map(e => (e.data['repo'] as string) ?? '').filter(Boolean),
+      'prediction_calibration',
       ...repoEvents.map(e => ((e.data['metadata'] as any)?.fullName as string) ?? '').filter(Boolean),
     ];
 

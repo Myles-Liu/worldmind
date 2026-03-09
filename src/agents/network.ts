@@ -36,6 +36,17 @@ export class NetworkAgent extends BaseAgent {
   readonly description =
     'Builds and maintains developer/project relationship graphs, identifies communities and influencers';
 
+  protected override autoSummary(
+    _outputType: string,
+    data: Record<string, unknown>,
+    confidence: number,
+  ): string {
+    const clusters = (data['clusters'] as any[]) ?? [];
+    const insights = (data['insights'] as string[]) ?? [];
+    if (clusters.length === 0 && insights.length > 0) return insights[0]!.slice(0, 100);
+    return `${clusters.length} cluster(s), ${Math.round(confidence * 100)}% conf`;
+  }
+
   /**
    * Analyze events for network/relationship changes.
    */
@@ -76,6 +87,7 @@ export class NetworkAgent extends BaseAgent {
         0.3,
         'No structural relationships — repos are independent',
         entityIds,
+        `${repos.length} repos analyzed, no structural overlap detected`,
       )];
     }
 
@@ -154,6 +166,7 @@ Identify clusters, key players, and insights about the ecosystem.`;
           0.6,
           analysis.insights.join('; ') || 'Network analysis completed',
           entityIds,
+          `${analysis.clusters.length} clusters, ${analysis.keyPlayers.length} key players: ${analysis.insights.slice(0, 2).map(s => s.slice(0, 80)).join('; ')}`,
         ),
       ];
 

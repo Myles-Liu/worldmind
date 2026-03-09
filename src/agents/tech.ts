@@ -26,6 +26,19 @@ export class TechAgent extends BaseAgent {
   readonly description =
     'Tracks technology stack and framework lifecycles, adoption curves, and migration patterns';
 
+  protected override autoSummary(
+    _outputType: string,
+    data: Record<string, unknown>,
+    confidence: number,
+  ): string {
+    const rising = (data['risingTechnologies'] as any[]) ?? [];
+    const declining = (data['decliningTechnologies'] as any[]) ?? [];
+    const parts: string[] = [];
+    if (rising.length > 0) parts.push(`↑${rising.map((t: any) => t.name).join(',')}`);
+    if (declining.length > 0) parts.push(`↓${declining.map((t: any) => t.name).join(',')}`);
+    return parts.length > 0 ? `${parts.join(' ')} (${Math.round(confidence * 100)}%)` : `tech analysis (${Math.round(confidence * 100)}%)`;
+  }
+
   /**
    * Analyze events for technology trends.
    */
@@ -144,6 +157,7 @@ What technologies are rising? What's declining? What patterns do you see?`;
           0.55,
           analysis.reasoning,
           entityIds,
+          `Rising: ${analysis.risingTechnologies.slice(0, 3).map(t => t.name).join(', ') || 'none'}. Declining: ${analysis.decliningTechnologies.slice(0, 2).map(t => t.name).join(', ') || 'none'}`,
         ),
       ];
 

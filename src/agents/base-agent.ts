@@ -323,6 +323,7 @@ export abstract class BaseAgent implements Agent {
     confidence: number,
     reasoning: string,
     relatedEntities: string[] = [],
+    summary?: string,
   ): AgentOutput {
     return {
       agentName: this.name,
@@ -330,9 +331,24 @@ export abstract class BaseAgent implements Agent {
       data,
       confidence,
       reasoning,
+      summary: summary ?? this.autoSummary(outputType, data, confidence),
       timestamp: new Date().toISOString(),
       relatedEntities,
     };
+  }
+
+  /**
+   * Auto-generate a one-line summary from output data.
+   * Subclasses can override for domain-specific summaries.
+   */
+  protected autoSummary(
+    outputType: string,
+    data: Record<string, unknown>,
+    confidence: number,
+  ): string {
+    const target = (data['repo'] ?? data['target'] ?? data['technology'] ?? '') as string;
+    const conf = Math.round(confidence * 100);
+    return `[${outputType}] ${target} (${conf}%)`.trim();
   }
 
   /**
