@@ -134,6 +134,9 @@ npx tsx scripts/run-discovery-analysis.ts --top 10
 # Predict a specific repo
 npx tsx scripts/predict-repo.ts karpathy/autoresearch
 
+# Crypto domain demo (no API key needed)
+npx tsx scripts/predict-crypto.ts --tokens=bitcoin,ethereum,solana
+
 # Backtest against historical data
 npx tsx scripts/backtest.ts --predict-only --fast
 ```
