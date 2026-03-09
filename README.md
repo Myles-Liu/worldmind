@@ -1,41 +1,58 @@
 # 🌍 WorldMind
 
-**A multi-agent world model engine — watch, learn, predict, verify.**
+**A multi-agent world model engine — observe, reason, predict, simulate.**
 
-> *"Build an AI that learns from the world, then prove it right."*
+> *"Give AI agents the fourth dimension: time."*
 
-WorldMind is a reasoning engine powered by 5 specialized AI agents that continuously observe a domain (starting with GitHub open source), build an internal model, and make verifiable predictions.
+WorldMind is a domain-agnostic engine that spawns specialized AI agents to continuously perceive, model, and reason about any domain. It ships with three built-in domains — **GitHub** (trend prediction), **Crypto** (market analysis), and **Social** (OASIS-powered social simulation) — and you can build your own in ~50 lines.
 
-## ✨ Why This Matters
+## ✨ What It Does
 
-Most AI systems are **consumers** of information. WorldMind is a **producer**:
+| Mode | Description |
+|------|-------------|
+| **🔮 Predict** | 5 agents discover, analyze, debate, and rank emerging trends (GitHub, Crypto, or custom) |
+| **🌐 Simulate** | Spin up a living social world — 10+ AI agents posting, replying, following, arguing — and join as a player |
+| **🧪 Backtest** | Validate predictions against real historical data. Self-calibrating feedback loop. |
 
-1. **Observes** — Monitors new repos, HN mentions, network relationships
-2. **Models** — Builds a structured world model from signals
-3. **Predicts** — Makes concrete, time-bound, verifiable claims
-4. **Verifies** — Checks past predictions against reality
-5. **Learns** — Adjusts based on what it got right/wrong
+### The Prediction Pipeline
 
-The prediction loop closes in days, not months. [Try it yourself.](#quick-start)
+```
+Discovery → Trend Agent → Network + Tech (parallel) → Predict → Challenge → Revision
+```
 
-## 🧠 Architecture
+Each prediction is **attacked** by the Challenge Agent before it ships. Overconfident claims get revised downward. Weak evidence gets called out. The system argues with itself so you don't have to.
 
-WorldMind separates the **generic engine** from **domain-specific adapters**.
+### The Social Simulation
+
+WorldMind can spawn an entire social platform (powered by [OASIS](https://github.com/camel-ai/oasis)) where AI agents have persistent memory, form relationships, and react to injected events — in any language, any culture, any topic.
+
+You can:
+- **Play** as a participant (post, comment, like, follow)
+- **Observe** as a god-mode admin (inject news, kill agents, interview them)
+- **Experiment** with different world configurations
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      WorldModel Engine                          │
+│                      WorldMind Engine                           │
 │                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │  Context Engine (5 layers)  │  SharedContextBus           │ │
-│  │  Knowledge Base             │  Semantic Memory (TF-IDF)   │ │
-│  └───────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │  Agent Pipeline                                           │ │
-│  │  Observe → Analyze → Predict → Challenge → Revise         │ │
-│  └───────────────────────────────────────────────────────────┘ │
-└────────────────────────────┬────────────────────────────────────┘
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Context Engine (5-layer)   │  SharedContextBus           │  │
+│  │  Semantic Memory (TF-IDF)   │  Knowledge Base             │  │
+│  │  Agent Memory (episodic/social/semantic)                   │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Agent Pipeline (5 specialized agents)                    │  │
+│  │  Observe → Analyze → Predict → Challenge → Revise         │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Interactive World Engine (OASIS bridge)                   │  │
+│  │  Player mode │ Admin mode │ Persistent agent memory       │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└────────────────────────────┬─────────────────────────────────────┘
                              │
               ┌──────────────┼──────────────┬──────────────┐
               ▼              ▼              ▼              ▼
@@ -43,59 +60,81 @@ WorldMind separates the **generic engine** from **domain-specific adapters**.
         │  GitHub  │  │  Crypto  │  │  Social  │  │  Custom  │
         │ Adapter  │  │ Adapter  │  │ Adapter  │  │ Adapter  │
         └──────────┘  └──────────┘  └──────────┘  └──────────┘
-         5 agents      CoinGecko     OASIS sim     (yours)
-         3 collectors
-```
-
-### GitHub Domain (Built-in)
-
-```
-Trend Agent → Network Agent ─┐
-               Tech Agent  ──┤
-                              ▼
-                        Predict Agent
-                              │
-                        Challenge Agent ← "Attack every prediction"
-                              │
-                        Round 2 Revision ← Accept valid challenges
 ```
 
 ### Context Engine (5 Layers)
 
-Each agent sees the world through 5 context layers — inspired by [Anthropic's context engineering principles](docs/anthropic-context-engineering-notes.md):
+Inspired by [Anthropic's context engineering principles](docs/anthropic-context-engineering-notes.md):
 
-| Layer | Purpose | Typical Size |
-|-------|---------|--------------|
-| **Identity** | Who you are + task | 800t |
-| **World State** | What's happening now | 600t |
-| **Working Memory** | What you need for this task | 1200t |
-| **Long-term Memory** | Lessons from past cycles | 500t |
-| **Knowledge** | Domain facts (calibration, trends) | 400t |
+| Layer | Purpose | Compression |
+|-------|---------|-------------|
+| **Identity** | Agent soul + role | Never compressed |
+| **World State** | Current domain state | Dynamic budget |
+| **Working Memory** | Task-specific context | Dynamic budget |
+| **Long-term Memory** | Lessons from past cycles | Importance-weighted decay |
+| **Knowledge** | Domain facts + calibration | Injected per domain |
 
-**Key insight**: Give only *just enough* context. Signal-to-noise ratio matters more than token count.
+### Agent Memory System (v2)
+
+Each agent in the social simulation maintains three types of persistent memory:
+
+- **Episodic** — what happened (posts seen, interactions had)
+- **Social** — relationships (sentiment toward other agents, interaction history)
+- **Semantic** — learned facts and opinions formed during simulation
+
+Memory persists across rounds and is injected into agent prompts, enabling genuine personality evolution and relationship dynamics.
 
 ## 🚀 Quick Start
+
+```bash
+git clone https://github.com/Myles-Liu/worldmind.git
+cd worldmind && npm install
+cp .env.example .env  # Add your API keys
+```
+
+### Predict: GitHub Trend Discovery
+
+```bash
+# Full pipeline: discover → analyze → predict → challenge → revise
+npx tsx scripts/run-discovery-analysis.ts --top 10
+
+# Predict a specific repo
+npx tsx scripts/predict-repo.ts karpathy/autoresearch
+```
+
+### Predict: Crypto Market
+
+```bash
+# No API key needed — uses CoinGecko free API
+npx tsx scripts/predict-crypto.ts --tokens=bitcoin,ethereum,solana
+```
+
+### Simulate: Interactive Social World
+
+```bash
+# Launch a social simulation with a world config
+npx tsx scripts/play.ts --world worlds/cn-tech.json    # 中文科技圈
+npx tsx scripts/play.ts --world worlds/cn-finance.json  # 中文投资社区
+npx tsx scripts/play.ts --world worlds/en-tech.json     # English tech Twitter
+```
+
+### Backtest: Validate Predictions
+
+```bash
+npx tsx scripts/backtest.ts --predict-only --fast
+```
 
 ### As a Library
 
 ```ts
 import { WorldModel, GitHubDomainAdapter } from 'worldmind';
 
-// Use the built-in GitHub domain
 const world = new WorldModel({
   domain: new GitHubDomainAdapter({ githubToken: process.env.GITHUB_TOKEN }),
   llm: { apiKey: process.env.OPENAI_API_KEY },
 });
 
-// Run a full observe → reason → predict cycle
 const predictions = await world.runCycle();
-
-// Or predict a specific target
-const prediction = await world.predict({
-  target: 'facebook/react',
-  metric: 'stars',
-  timeframe: '30d',
-});
 ```
 
 ### Build Your Own Domain
@@ -103,7 +142,6 @@ const prediction = await world.predict({
 ```ts
 import { WorldModel } from 'worldmind';
 
-// Any domain — just define entities, metrics, and knowledge
 const cryptoWorld = new WorldModel({
   domain: {
     name: 'crypto',
@@ -121,27 +159,29 @@ const cryptoWorld = new WorldModel({
 });
 ```
 
-### CLI
+## 🌐 World Configurations
 
-```bash
-git clone https://github.com/Myles-Liu/worldmind.git
-cd worldmind && npm install
-cp .env.example .env  # Add your API keys
+Worlds are pure JSON — no code required. Define a community and watch it come alive:
 
-# Full pipeline: discover → analyze → predict → challenge → revise
-npx tsx scripts/run-discovery-analysis.ts --top 10
-
-# Predict a specific repo
-npx tsx scripts/predict-repo.ts karpathy/autoresearch
-
-# Crypto domain demo (no API key needed)
-npx tsx scripts/predict-crypto.ts --tokens=bitcoin,ethereum,solana
-
-# Backtest against historical data
-npx tsx scripts/backtest.ts --predict-only --fast
+```json
+{
+  "name": "中文科技圈",
+  "language": "中文",
+  "culture": "中国科技圈文化。大家直来直去，喜欢用梗和网络用语。",
+  "agentCount": 10,
+  "archetypes": [
+    { "role": "engineer", "personality": "务实的技术人，关注 AI 和 Web 开发。" },
+    { "role": "vc", "personality": "追踪新兴项目，关注增长和市场规模。" },
+    { "role": "skeptic", "personality": "唱反调，挑战炒作。以犀利点评出名。" }
+  ]
+}
 ```
 
-## 📊 Demo Output (Real Run — March 9, 2026)
+Ships with 3 worlds: `cn-tech` (中文科技), `cn-finance` (中文投资), `en-tech` (English tech).
+
+## 📊 Demo Output (Real Runs)
+
+### GitHub Discovery Pipeline
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
@@ -154,73 +194,31 @@ npx tsx scripts/backtest.ts --predict-only --fast
   📊 110 unique repos → 2 multi-signal → Top 5 selected
 
 ═══ Phase 2: Agent Analysis ═══
-  🔍 Trend Agent (45s)     → 4 trending: autoresearch (98%), CLI-Anything, Shadowbroker, OBLITERATUS
-  🌐 Network + ⚡ Tech (38s) → Mapped clusters, found rising tech
-  🎯 Predict Agent (40s)   → 5 predictions (72% to 45% confidence)
+  🔍 Trend Agent (45s)     → 4 trending signals
+  🌐 Network + ⚡ Tech (38s) → Mapped clusters + rising tech
+  🎯 Predict Agent (40s)   → 5 predictions (72%-45% confidence)
   ⚔️  Challenge Agent (63s) → 4 weakened, 1 rejected
-  🔄 Round 2 Revision (46s) → All predictions revised downward after debate
+  🔄 Round 2 Revision (46s) → All predictions revised after debate
 
 ═══ Final Rankings ═══
-  🥇 karpathy/autoresearch         58%  explosive  50000→25000★ in 30d
-  🥈 elder-plinius/OBLITERATUS     51%  fast       4800→3200★ in 30d
-  🥉 HKUDS/CLI-Anything            48%  moderate   2800→1400★ in 30d
+  🥇 karpathy/autoresearch         58%  explosive  25000★/30d
+  🥈 elder-plinius/OBLITERATUS     51%  fast       3200★/30d
+  🥉 HKUDS/CLI-Anything            48%  moderate   1400★/30d
 
-  ⏱️ Total: 438s | 110 repos discovered → 5 analyzed → 5 ranked
+  ⏱️ Total: 438s | 110 repos → 5 analyzed → 5 ranked
 ```
 
-**What happened**: The Predict Agent initially predicted 50,000 stars for `karpathy/autoresearch`. The Challenge Agent attacked this as overconfident — Karpathy is famous but 50K in 30 days would be unprecedented. Round 2: Predict accepted the challenge and revised to 25,000. That's the system working as designed.
-
-## 📁 Project Structure
+### Crypto Domain
 
 ```
-worldmind/
-├── src/
-│   ├── api/              # Public API entry point
-│   │   └── index.ts      # WorldModel, types, re-exports
-│   ├── domains/          # Domain adapters (pluggable)
-│   │   ├── types.ts      # DomainAdapter interface, WorldModel class
-│   │   └── github/       # Built-in GitHub domain
-│   │       └── adapter.ts
-│   ├── agents/           # Agent implementations
-│   │   ├── base-agent.ts # Generic base (domain-agnostic)
-│   │   ├── trend.ts      # Spot emerging patterns
-│   │   ├── network.ts    # Map entity relationships
-│   │   ├── tech.ts       # Track technology lifecycles
-│   │   ├── predict.ts    # Synthesize into predictions
-│   │   └── challenge.ts  # Stress-test every prediction
-│   ├── llm/              # LLM orchestration
-│   │   ├── context-engine.ts   # 5-layer prompt builder
-│   │   └── client.ts           # OpenAI-compatible client
-│   ├── context/          # Inter-agent communication
-│   │   └── shared-bus.ts       # Summary-based messaging
-│   ├── memory/           # Storage & retrieval
-│   │   ├── semantic-memory.ts  # TF-IDF retrieval, no vector DB
-│   │   ├── knowledge-base.ts   # Domain knowledge injection
-│   │   └── prediction-store.ts
-│   └── collectors/       # Data sources (GitHub-specific)
-│       ├── discovery.ts  # Multi-source aggregator
-│       ├── hn.ts         # HackerNews scanner
-│       └── star-history.ts
-├── scripts/
-│   ├── run-discovery-analysis.ts  # Full pipeline (GitHub)
-│   ├── predict-repo.ts            # Predict a single repo
-│   ├── backtest.ts                # Validate against history
-│   └── verify-predictions.ts      # Check past predictions
-└── docs/
-    └── anthropic-context-engineering-notes.md
+═══ Crypto Analysis ═══
+  📈 3 tokens analyzed (CoinGecko API)
+  🎯 4 predictions generated
+  ⚔️  Challenge: revised all predictions downward
+  🔄 Calibration data → knowledge base
 ```
 
-## 🛠️ Tech Stack
-
-- **Language**: TypeScript (Node.js)
-- **LLM**: OpenAI-compatible API (default: OpenAI)
-- **Data**: GitHub API, HackerNews API (free, no paid APIs)
-- **Storage**: JSON files (no external DB required)
-- **No vector DBs** — pure TF-IDF semantic memory
-
-## 📈 Prediction Accuracy (Backtested)
-
-WorldMind predictions are validated against **real historical data** — no waiting 30 days:
+### Backtest Results (Historical Validation)
 
 | Repo | Predicted (30d) | Actual | Error | Grade |
 |------|----------------|--------|-------|-------|
@@ -230,17 +228,90 @@ WorldMind predictions are validated against **real historical data** — no wait
 | stanford-oval/storm | 11,500 | 16,932 | -32% | 🅲️ |
 | karpathy/LLM101n | 22,000 | 32,257 | -32% | 🅲️ |
 
-**How backtesting works**: Take a repo that "blew up" 3 months ago. Pretend to be at Day 3 of its growth. Feed only those 3 days to the agents. Compare prediction against what actually happened. Instant validation.
+Self-calibrating: each backtest updates the knowledge base → next run is more accurate.
 
-**Calibration feedback loop**: Each backtest run updates a calibration entry in the knowledge base. The Predict Agent sees its historical accuracy and adjusts — a self-improving system.
+## 📁 Project Structure
+
+```
+worldmind/
+├── src/
+│   ├── api/                # Public API (WorldModel, exports)
+│   ├── domains/            # Domain adapters (pluggable)
+│   │   ├── types.ts        # DomainAdapter interface
+│   │   ├── github/         # GitHub trend prediction
+│   │   ├── crypto/         # Cryptocurrency analysis
+│   │   └── social/         # OASIS social simulation
+│   ├── agents/             # 5 specialized agents
+│   │   ├── base-agent.ts   # Domain-agnostic base
+│   │   ├── trend.ts        # Spot emerging patterns
+│   │   ├── network.ts      # Map relationships
+│   │   ├── tech.ts         # Track technology lifecycles
+│   │   ├── predict.ts      # Synthesize predictions
+│   │   └── challenge.ts    # Stress-test every prediction
+│   ├── player/             # Interactive world engine
+│   │   ├── engine.ts       # OASIS bridge + lifecycle
+│   │   ├── memory.ts       # Agent memory (episodic/social/semantic)
+│   │   ├── world-config.ts # World settings loader
+│   │   └── types.ts        # Player/Admin action types
+│   ├── llm/                # LLM orchestration
+│   │   ├── context-engine.ts    # 5-layer prompt builder
+│   │   └── client.ts            # OpenAI-compatible client
+│   ├── context/            # Inter-agent communication
+│   │   └── shared-bus.ts        # Summary-based messaging
+│   ├── memory/             # Storage & retrieval
+│   │   ├── semantic-memory.ts   # TF-IDF, no vector DB
+│   │   ├── agent-memory.ts      # Per-agent persistent memory
+│   │   ├── knowledge-base.ts    # Domain knowledge injection
+│   │   └── prediction-store.ts
+│   └── collectors/         # Data sources
+│       ├── discovery.ts    # Multi-source aggregator
+│       ├── github.ts       # GitHub API
+│       ├── hn.ts           # HackerNews scanner
+│       ├── new-repos.ts    # New repo scanner
+│       └── star-history.ts # Star time-series
+├── worlds/                 # World configuration files (JSON)
+│   ├── cn-tech.json        # 中文科技圈
+│   ├── cn-finance.json     # 中文投资社区
+│   └── en-tech.json        # English tech Twitter
+├── scripts/
+│   ├── run-discovery-analysis.ts  # Full GitHub pipeline
+│   ├── predict-repo.ts            # Single repo prediction
+│   ├── predict-crypto.ts          # Crypto domain demo
+│   ├── play.ts                    # Interactive world launcher
+│   ├── backtest.ts                # Historical validation
+│   └── verify-predictions.ts      # Check past predictions
+├── data/                          # Runtime data (gitignored)
+└── docs/
+    └── anthropic-context-engineering-notes.md
+```
+
+## 🛠️ Tech Stack
+
+- **Language**: TypeScript (Node.js)
+- **LLM**: Any OpenAI-compatible API
+- **Social Simulation**: [OASIS](https://github.com/camel-ai/oasis) (Python subprocess)
+- **Data**: GitHub API, HackerNews API, CoinGecko API (all free)
+- **Storage**: JSON files — no external DB required
+- **No vector DBs** — pure TF-IDF semantic memory
+
+## 🧠 Design Philosophy
+
+1. **Domain-agnostic core** — The engine doesn't know about GitHub or crypto. Domains plug in as adapters.
+2. **Adversarial reasoning** — Every prediction is attacked before it ships. The Challenge Agent is a professional skeptic.
+3. **Self-calibrating** — Backtest results feed back into the knowledge base. The system learns from its mistakes.
+4. **Context over tokens** — Signal-to-noise ratio matters more than prompt length. 5-layer context engineering keeps agents focused.
+5. **No black boxes** — Every prediction includes evidence chains, challenge reports, and revision history.
+6. **Time as first-class** — Every fact, memory, and relationship has temporal metadata. The world model lives on a timeline.
 
 ## 🤝 Contributing
 
-This is a research prototype. PRs welcome, especially around:
+Research prototype. PRs welcome — especially:
 
+- New domain adapters
 - Better prediction calibration
-- Additional data sources (Reddit, Twitter/X)
-- Visualization of the world model
+- Additional data sources (Reddit, Twitter/X, ArXiv)
+- World configurations for new communities
+- Visualization of agent reasoning
 
 ## 📄 License
 
@@ -248,4 +319,4 @@ MIT
 
 ---
 
-*Built with the belief that AI systems should be verifiable, not just impressive.*
+*Built with the belief that AI systems should model the world, not just respond to prompts.*
