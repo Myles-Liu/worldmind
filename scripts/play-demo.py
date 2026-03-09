@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """
-Player-in-the-Loop demo — validates the full interactive experience.
-Myles joins, posts, agents react, then we read the results.
+Player-in-the-Loop full demo.
+Reads world config from worlds/*.json, generates agents, runs simulation.
+
+Usage:
+  python3 scripts/play-demo.py                    # default: cn-tech, 2 rounds
+  python3 scripts/play-demo.py --world en-tech    # English tech
+  python3 scripts/play-demo.py --rounds 3         # 3 rounds of agent reactions
 """
 
 import asyncio, os, json, sqlite3, random, sys, copy
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WORLDS_DIR = os.path.join(PROJECT_ROOT, 'worlds')
 DB_PATH = os.path.join(PROJECT_ROOT, 'data/social/play_demo.db')
-PROFILE = os.path.join(PROJECT_ROOT, 'data/social/twitter_agents_10.csv')
+
 
 def load_env():
     env_path = os.path.join(PROJECT_ROOT, '.env')
@@ -20,14 +26,52 @@ def load_env():
                     k, v = line.split('=', 1)
                     os.environ.setdefault(k.strip(), v.strip())
 
-load_env()
-os.environ['OPENAI_API_KEY'] = os.environ.get('WORLDMIND_LLM_API_KEY', '')
-os.environ['OPENAI_API_BASE_URL'] = os.environ.get('WORLDMIND_LLM_BASE_URL', '')
 
+def load_world(name_or_path):
+    """Load world settings from JSON file."""
+    if os.path.exists(name_or_path):
+        path = name_or_path
+    else:
+        path = os.path.join(WORLDS_DIR, f'{name_or_path}.json')
+    if not os.path.exists(path):
+        available = [f[:-5] for f in os.listdir(WORLDS_DIR) if f.endswith('.json')]
+        print(f'❌ World not found: {name_or_path}')
+        print(f'   Available: {", ".join(available)}')
+        sys.exit(1)
+    with open(path) as f:
+        return json.load(f)
+
+
+def generate_csv(world, player_name='Myles', player_bio='探索 AI 模拟世界的真人。'):
+    """Generate agent profile CSV from world config."""
+    lang = world.get('language', 'English')
+    lang_suffix = f' 用{lang}交流。' if lang != 'English' else ''
+    directive = world.get('agentDirective', '')
+    directive_suffix = f' {directive}' if directive else ''
+
+    lines = ['username,description,user_char']
+    archetypes = world.get('archetypes', [])
+    count = world.get('agentCount', len(archetypes))
+
+    for i in range(count):
+        arch = archetypes[i % len(archetypes)]
+        suffix = f'_{i // len(archetypes) + 1}' if i >= len(archetypes) else ''
+        username = f'{arch["role"]}{suffix}'
+        desc = arch['description'].replace('"', '""')
+        char = f'{arch["personality"]}{lang_suffix}{directive_suffix}'.replace('"', '""')
+        lines.append(f'{username},"{desc}","{char}"')
+
+    # Player
+    bio = f'{player_bio}{lang_suffix}'.replace('"', '""')
+    lines.append(f'{player_name},"{player_name}","{bio}"')
+
+    return '\n'.join(lines) + '\n'
+
+
+# ─── Streaming API Patch ────────────────────────────────────────
 
 def patch_camel():
     from camel.models.openai_model import OpenAIModel
-    _orig = OpenAIModel._arequest_chat_completion
     async def _patched(self, messages, tools=None):
         cfg = copy.deepcopy(self.model_config_dict)
         if tools: cfg["tools"] = tools
@@ -35,10 +79,9 @@ def patch_camel():
         cfg["stream"] = True
         stream = await self._async_client.chat.completions.create(
             messages=messages, model=self.model_type, **cfg)
-        parts, tc_map, finish, cid, model_name = [], {}, None, "", self.model_type
+        parts, tc_map, finish, cid = [], {}, None, ""
         async for chunk in stream:
             if chunk.id: cid = chunk.id
-            if chunk.model: model_name = chunk.model
             for ch in (chunk.choices or []):
                 if ch.delta.content: parts.append(ch.delta.content)
                 if ch.finish_reason: finish = ch.finish_reason
@@ -59,20 +102,47 @@ def patch_camel():
             tool_calls=[tc_map[i] for i in sorted(tc_map)] if tc_map else None)
         return ChatCompletion.model_construct(
             id=cid or "x", object="chat.completion", created=int(time.time()),
-            model=model_name, usage=CompletionUsage.model_construct(prompt_tokens=0,completion_tokens=0,total_tokens=0),
+            model=self.model_type,
+            usage=CompletionUsage.model_construct(prompt_tokens=0, completion_tokens=0, total_tokens=0),
             choices=[Choice.model_construct(finish_reason=finish or "stop", index=0, message=msg)])
     OpenAIModel._arequest_chat_completion = _patched
-    print("🔧 CAMEL patched")
 
+
+# ─── Main ────────────────────────────────────────────────────────
 
 async def main():
-    rounds = int(sys.argv[1]) if len(sys.argv) > 1 else 2
+    # Parse args
+    world_name = 'cn-tech'
+    rounds = 2
+    player_name = 'Myles'
+    for i, arg in enumerate(sys.argv[1:], 1):
+        if arg == '--world' and i < len(sys.argv) - 1: world_name = sys.argv[i + 1]
+        if arg == '--rounds' and i < len(sys.argv) - 1: rounds = int(sys.argv[i + 1])
+        if arg == '--name' and i < len(sys.argv) - 1: player_name = sys.argv[i + 1]
 
-    print(f"\n🌍 WorldMind Player-in-the-Loop Demo")
-    print("═" * 50)
+    load_env()
+    os.environ['OPENAI_API_KEY'] = os.environ.get('WORLDMIND_LLM_API_KEY', '')
+    os.environ['OPENAI_API_BASE_URL'] = os.environ.get('WORLDMIND_LLM_BASE_URL', '')
 
+    # Load world
+    world = load_world(world_name)
+    print(f'\n🌍 WorldMind — {world["name"]}')
+    print('═' * 50)
+    print(f'  语言: {world.get("language", "English")}')
+    print(f'  平台: {world.get("platform", "twitter")}')
+    print(f'  Agent 数: {world.get("agentCount", 10)}')
+    print(f'  轮数: {rounds}')
+    print()
+
+    # Generate profiles
+    csv = generate_csv(world, player_name)
+    csv_path = os.path.join(PROJECT_ROOT, 'data/social/play_demo_profiles.csv')
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    with open(csv_path, 'w') as f:
+        f.write(csv)
+
+    # Patch & import
     patch_camel()
-
     from camel.models import ModelFactory
     from camel.types import ModelPlatformType
     import oasis
@@ -81,7 +151,7 @@ async def main():
 
     model_name = os.environ.get('WORLDMIND_LLM_MODEL', 'gpt-4')
     model = ModelFactory.create(model_platform=ModelPlatformType.OPENAI, model_type=model_name)
-    print(f"  LLM: {model_name}")
+    print(f'  LLM: {model_name}')
 
     actions_list = [
         ActionType.CREATE_POST, ActionType.LIKE_POST,
@@ -89,108 +159,100 @@ async def main():
         ActionType.FOLLOW, ActionType.DO_NOTHING,
     ]
 
-    # Generate profiles — language/culture from world settings
-    lang = os.environ.get('WORLDMIND_LANG', '中文')
-    directive = f'用{lang}交流。保持角色人设，自然地参与讨论。' if lang != 'English' else 'Stay in character.'
-    
-    CN_ARCHETYPES = [
-        ('engineer', '全栈工程师', f'务实的技术人，关注 AI 和 Web 开发。分享技术洞察，对炒作持怀疑态度。{directive}'),
-        ('vc', '早期投资人', f'追踪新兴项目，关注增长和市场规模。喜欢用数据说话。{directive}'),
-        ('researcher', 'ML 研究员', f'发论文的学者，质疑没有实验支撑的观点。严谨但不无聊。{directive}'),
-        ('indie', '独立开发者', f'快速构建和发布产品。关注变现和开发者工具。结果导向。{directive}'),
-        ('journalist', '科技记者', f'报道 AI 和开源动态。提出尖锐问题，追逐热点。{directive}'),
-        ('skeptic', '技术评论人', f'唱反调，挑战炒作。以犀利点评出名。{directive}'),
-        ('pm', '产品经理', f'关注开发者工具和用户体验。对采用曲线感兴趣。{directive}'),
-        ('student', '计算机系学生', f'对 LLM 和分布式系统充满好奇。爱提问，分享学习笔记。{directive}'),
-        ('designer', 'UX 设计师', f'专注开发者体验和可用性。分享设计评论。{directive}'),
-        ('maintainer', '开源维护者', f'对代码质量和许可证有强烈观点。偶尔 burnout。{directive}'),
-    ]
-    
-    lines = ['username,description,user_char']
-    for role, desc, char in CN_ARCHETYPES:
-        lines.append(f'{role},"{desc}","{char}"')
-    lines.append(f'Myles,"Myles Liu","探索 AI 模拟世界的真人。好奇、直接、不废话。{directive}"')
-    
-    player_csv = os.path.join(PROJECT_ROOT, 'data/social/play_demo_profiles.csv')
-    with open(player_csv, 'w') as f:
-        f.write('\n'.join(lines) + '\n')
-
-    print("  📋 Generating agents...")
+    print('  📋 生成 Agent...')
     agent_graph = await generate_twitter_agent_graph(
-        profile_path=player_csv, model=model, available_actions=actions_list)
+        profile_path=csv_path, model=model, available_actions=actions_list)
     agents = list(agent_graph.get_agents())
     player_id, player_agent = agents[-1]
-    print(f"  ✅ {len(agents)} agents. Player = #{player_id}\n")
+    print(f'  ✅ {len(agents)} 个 Agent 就绪，你是 #{player_id}\n')
 
     if os.path.exists(DB_PATH): os.remove(DB_PATH)
-    env = oasis.make(agent_graph=agent_graph, platform=oasis.DefaultPlatformType.TWITTER, database_path=DB_PATH)
+    env = oasis.make(
+        agent_graph=agent_graph,
+        platform=oasis.DefaultPlatformType.TWITTER,
+        database_path=DB_PATH)
     await env.reset()
-    print("  ✅ World ready\n")
+    print('  ✅ 世界已创建\n')
 
     # ─── Round 1: Player posts ───
-    print("═══ Round 1: 你发帖 ═══\n")
+    lang = world.get('language', 'English')
+    if lang == '中文':
+        post_content = '大家好！我在做一个多 Agent 世界模拟引擎——类似模拟人生，但每个市民都由大模型驱动。他们会形成观点、传播信息、甚至随时间进化。有人感兴趣一起搞吗？🌍🤖'
+    else:
+        post_content = 'Hey everyone! Building a multi-agent world simulation — think SimCity but every citizen runs on an LLM. They form opinions, spread info, even evolve. Anyone interested? 🌍🤖'
+
+    print('═══ Round 1: 你发帖 ═══\n')
     await env.step({
         player_agent: ManualAction(
             action_type=ActionType.CREATE_POST,
-            action_args={'content': '大家好！我在做一个多 Agent 世界模拟引擎——类似模拟人生，但每个市民都由 LLM 驱动。他们会形成观点、传播信息、甚至随时间进化。底层用 OASIS 做社交模拟，上层用 TypeScript 做分析和预测。有人感兴趣一起搞吗？🌍🤖'},
-        )
+            action_args={'content': post_content})
     })
-    print("  📝 发帖成功!\n")
+    print(f'  📝 已发布: {post_content[:60]}...\n')
 
-    # ─── Rounds 2+: Agents react ───
+    # ─── Agent reaction rounds ───
+    from datetime import datetime
     for r in range(1, rounds + 1):
-        print(f"═══ Round {r+1}: Agents react ═══\n")
+        print(f'═══ Round {r+1}: Agent 反应中 ═══\n')
         non_player = [(aid, ag) for aid, ag in agents if aid != player_id]
         n = random.randint(max(3, len(non_player) // 2), len(non_player))
         active = random.sample(non_player, n)
-        print(f"  ⏱️  {n} agents thinking...")
+        print(f'  ⏱️  {n} 个 Agent 思考中...')
 
-        from datetime import datetime
         t1 = datetime.now()
-        await env.step({ag: LLMAction() for _, ag in active})
+        try:
+            await env.step({ag: LLMAction() for _, ag in active})
+        except Exception as e:
+            print(f'  ⚠️  部分 Agent 出错: {e}')
         elapsed = (datetime.now() - t1).total_seconds()
-        print(f"  ✅ Done in {elapsed:.0f}s\n")
+        print(f'  ✅ 完成 ({elapsed:.0f}s)\n')
 
-    # ─── Read results ───
+    await env.close()
+
+    # ─── Results ───
     conn = sqlite3.connect(DB_PATH)
 
-    print("═══ 📰 FEED ═══\n")
+    print('═══ 📰 信息流 ═══\n')
     for row in conn.execute('SELECT post_id, user_id, content, num_likes, num_shares FROM post ORDER BY post_id'):
-        you = " 👈 YOU" if row[1] == player_id else ""
-        print(f"  📄 Post #{row[0]} by agent_{row[1]}{you} | ❤️{row[3]} 🔄{row[4]}")
-        print(f"     {row[2][:200]}")
+        you = ' 👈 你' if row[1] == player_id else ''
+        print(f'  📄 帖子 #{row[0]} by agent_{row[1]}{you} | ❤️{row[3]} 🔄{row[4]}')
+        content = row[2] or ''
+        print(f'     {content[:200]}')
         for c in conn.execute('SELECT user_id, content FROM comment WHERE post_id=?', (row[0],)):
-            cyou = " (YOU)" if c[0] == player_id else ""
-            print(f"     💬 agent_{c[0]}{cyou}: {c[1][:150]}")
+            cyou = ' (你)' if c[0] == player_id else ''
+            print(f'     💬 agent_{c[0]}{cyou}: {(c[1] or "")[:150]}')
         print()
 
-    print("═══ 🔔 YOUR INTERACTIONS ═══\n")
-    likes_on_you = conn.execute(
+    print('═══ 🔔 与你的互动 ═══\n')
+    likes = conn.execute(
         'SELECT l.user_id FROM like l JOIN post p ON l.post_id=p.post_id WHERE p.user_id=?',
         (player_id,)).fetchall()
-    for l in likes_on_you:
-        print(f"  ❤️ agent_{l[0]} liked your post")
+    for l in likes:
+        print(f'  ❤️ agent_{l[0]} 赞了你的帖子')
 
     followers = conn.execute('SELECT follower_id FROM follow WHERE followee_id=?', (player_id,)).fetchall()
     for f in followers:
-        print(f"  👤 agent_{f[0]} followed you")
+        print(f'  👤 agent_{f[0]} 关注了你')
+
+    comments_on_you = conn.execute(
+        'SELECT c.user_id, c.content FROM comment c JOIN post p ON c.post_id=p.post_id WHERE p.user_id=?',
+        (player_id,)).fetchall()
+    for c in comments_on_you:
+        print(f'  💬 agent_{c[0]}: {(c[1] or "")[:100]}')
     print()
 
-    print("═══ 📊 WORLD STATS ═══\n")
+    print('═══ 📊 世界统计 ═══\n')
     tp = conn.execute('SELECT COUNT(*) FROM post').fetchone()[0]
     tc = conn.execute('SELECT COUNT(*) FROM comment').fetchone()[0]
     tl = conn.execute('SELECT COUNT(*) FROM like').fetchone()[0]
     tf = conn.execute('SELECT COUNT(*) FROM follow').fetchone()[0]
     tt = conn.execute('SELECT COUNT(*) FROM trace').fetchone()[0]
-    print(f"  Posts: {tp}  Comments: {tc}  Likes: {tl}  Follows: {tf}  Total traces: {tt}")
-    print(f"  Your posts: {conn.execute('SELECT COUNT(*) FROM post WHERE user_id=?',(player_id,)).fetchone()[0]}")
-    print(f"  Your followers: {len(followers)}")
-    print(f"  Likes on your posts: {len(likes_on_you)}")
+    print(f'  帖子: {tp}  评论: {tc}  点赞: {tl}  关注: {tf}  总行为: {tt}')
+    yp = conn.execute('SELECT COUNT(*) FROM post WHERE user_id=?', (player_id,)).fetchone()[0]
+    print(f'  你的帖子: {yp}  你的粉丝: {len(followers)}  你收到的赞: {len(likes)}')
     print()
 
     conn.close()
-    await env.close()
-    print("✅ Simulation complete!\n")
+    print('✅ 模拟完成!\n')
 
 
 if __name__ == '__main__':
