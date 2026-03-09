@@ -207,6 +207,61 @@ export class WorldEngine {
     return this.queryAgentById(agentId);
   }
 
+  // ─── Director Mode: AgentDirector integration ────────────────
+
+  /**
+   * Query an agent's feed from OASIS DB (via Python bridge).
+   */
+  async queryAgentFeed(agentId: number, limit = 10): Promise<Array<{
+    post_id: number;
+    user_id: number;
+    author_name: string;
+    content: string;
+    num_likes: number;
+    num_comments: number;
+  }>> {
+    const raw = await this.sendCommand({ type: 'query_feed', agentId, limit });
+    try {
+      const msg = JSON.parse(raw);
+      return msg.feed ?? [];
+    } catch { return []; }
+  }
+
+  /**
+   * Query an agent's notifications from OASIS DB (via Python bridge).
+   */
+  async queryAgentNotifications(agentId: number, limit = 10): Promise<Array<{
+    type: string;
+    from_agent: string;
+    content: string;
+  }>> {
+    const raw = await this.sendCommand({ type: 'query_notifications', agentId, limit });
+    try {
+      const msg = JSON.parse(raw);
+      return msg.notifications ?? [];
+    } catch { return []; }
+  }
+
+  /**
+   * Submit pre-decided actions for a directed step (AgentDirector mode).
+   * Bypasses OASIS LLM — all decisions come from our director.
+   */
+  async directedStep(decisions: Array<{
+    agentId: number;
+    action: string;
+    content?: string;
+    targetPostId?: number;
+    targetUserId?: number;
+  }>): Promise<{ executed: number; skipped: number }> {
+    const raw = await this.sendCommand({ type: 'directed_step', decisions });
+    try {
+      const msg = JSON.parse(raw);
+      return { executed: msg.executed ?? 0, skipped: msg.skipped ?? 0 };
+    } catch {
+      return { executed: 0, skipped: 0 };
+    }
+  }
+
   // ─── Internal: OASIS subprocess ─────────────────────────────
 
   private async startOasis(): Promise<void> {

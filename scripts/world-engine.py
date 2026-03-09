@@ -367,6 +367,120 @@ async def main():
             else:
                 emit({"type": "error", "message": f"Agent {agent_id} not found"})
 
+        elif cmd_type == "directed_step":
+            # AgentDirector mode: receive pre-decided actions from TypeScript
+            decisions = cmd.get("decisions", [])
+            step_actions = {}
+            skipped = 0
+            for d in decisions:
+                action_type = d.get("action", "do_nothing")
+                if action_type == "do_nothing":
+                    skipped += 1
+                    continue
+                agent_id = d.get("agentId")
+                target_agent = None
+                for aid, ag in agents_list:
+                    if aid == agent_id:
+                        target_agent = ag
+                        break
+                if not target_agent:
+                    log(f"[engine] directed_step: agent {agent_id} not found, skipping")
+                    continue
+                try:
+                    if action_type == "post":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.CREATE_POST,
+                            action_args={"content": d.get("content", "")},
+                        )
+                    elif action_type == "comment":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.CREATE_COMMENT,
+                            action_args={
+                                "post_id": d.get("targetPostId", 1),
+                                "content": d.get("content", ""),
+                            },
+                        )
+                    elif action_type == "like":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.LIKE_POST,
+                            action_args={"post_id": d.get("targetPostId", 1)},
+                        )
+                    elif action_type == "follow":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.FOLLOW,
+                            action_args={"followee_id": d.get("targetUserId", 0)},
+                        )
+                    else:
+                        log(f"[engine] directed_step: unknown action {action_type}")
+                except Exception as e:
+                    log(f"[engine] directed_step: error building action for agent {agent_id}: {e}")
+
+            if step_actions:
+                try:
+                    await env.step(step_actions)
+                except Exception as e:
+                    log(f"[engine] directed_step error: {e}")
+
+            log(f"[engine] directed_step: {len(step_actions)} actions executed, {skipped} skipped")
+            emit({"type": "directed_step_done", "executed": len(step_actions), "skipped": skipped})
+
+        elif cmd_type == "query_feed":
+            # Query agent's feed from DB for director mode
+            agent_id = cmd.get("agentId", 0)
+            limit = cmd.get("limit", 10)
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute(
+                    """SELECT p.id as post_id, p.user_id, p.content, p.num_likes, 
+                              u.user_name as author_name,
+                              (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id) as num_comments
+                       FROM post p
+                       JOIN user u ON p.user_id = u.user_id
+                       ORDER BY p.created_at DESC
+                       LIMIT ?""",
+                    (limit,),
+                )
+                feed = [dict(row) for row in cursor.fetchall()]
+                conn.close()
+                emit({"type": "feed_result", "agentId": agent_id, "feed": feed})
+            except Exception as e:
+                emit({"type": "error", "message": f"query_feed failed: {e}"})
+
+        elif cmd_type == "query_notifications":
+            # Query notifications for an agent
+            agent_id = cmd.get("agentId", 0)
+            limit = cmd.get("limit", 10)
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                notifs = []
+                # Recent comments on agent's posts
+                cursor = conn.execute(
+                    """SELECT 'comment' as type, u.user_name as from_agent, c.content
+                       FROM comment c
+                       JOIN post p ON c.post_id = p.id
+                       JOIN user u ON c.user_id = u.user_id
+                       WHERE p.user_id = ? AND c.user_id != ?
+                       ORDER BY c.created_at DESC LIMIT ?""",
+                    (agent_id, agent_id, limit),
+                )
+                notifs.extend([dict(row) for row in cursor.fetchall()])
+                # Recent follows
+                cursor = conn.execute(
+                    """SELECT 'follow' as type, u.user_name as from_agent, '' as content
+                       FROM follow f
+                       JOIN user u ON f.follower_id = u.user_id
+                       WHERE f.followee_id = ?
+                       ORDER BY f.created_at DESC LIMIT ?""",
+                    (agent_id, limit),
+                )
+                notifs.extend([dict(row) for row in cursor.fetchall()])
+                conn.close()
+                emit({"type": "notifications_result", "agentId": agent_id, "notifications": notifs})
+            except Exception as e:
+                emit({"type": "error", "message": f"query_notifications failed: {e}"})
+
         elif cmd_type == "interview":
             # Interview: ask an agent a question
             agent_id = cmd.get("agentId", 0)
