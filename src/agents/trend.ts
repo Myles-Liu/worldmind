@@ -28,7 +28,7 @@ interface BatchTrendResult {
 export class TrendAgent extends BaseAgent {
   readonly name = 'trend';
   readonly description =
-    'Monitors GitHub trending data and identifies repos with abnormal growth patterns';
+    'Monitors trending data and identifies entities with abnormal growth patterns';
 
   protected override autoSummary(
     outputType: string,

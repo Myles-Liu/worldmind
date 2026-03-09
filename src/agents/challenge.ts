@@ -115,7 +115,7 @@ Common biases IN THE PREDICTIONS you're reviewing:
 - Hype inflation: confusing initial spike with sustained growth
 - Celebrity bias: "famous author = guaranteed success"
 - Category error: "AI is hot, therefore any AI repo will explode"
-- Base rate neglect: most repos never reach 1000 stars, period`,
+- Base rate neglect: most entities never reach significant adoption, period`,
       responseFormat: `{
   "challenges": [
     {

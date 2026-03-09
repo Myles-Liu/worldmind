@@ -29,6 +29,25 @@ export interface DomainConfig {
   
   /** 初始知识库（可选） */
   initialKnowledge?: Omit<KnowledgeEntry, 'id' | 'addedAt'>[];
+  
+  /**
+   * Domain-specific agent context — injected into Layer 1 of each agent's prompt.
+   * 
+   * Keys are role-based (not agent names), so different domains can use
+   * the same agent pipeline with different instructions.
+   * 
+   * Example:
+   * ```ts
+   * agentContext: {
+   *   trend:     'Identify repos with breakout potential. Stars ≠ quality.',
+   *   predict:   'Predict star counts. Base rate: most repos plateau in 7-14d.',
+   *   challenge: 'Most repos never reach 1000 stars. Attack weak evidence.',
+   *   network:   'Map shared contributors, dependencies, org backing.',
+   *   tech:      'Track language/framework adoption cycles.',
+   * }
+   * ```
+   */
+  agentContext?: Record<string, string>;
 }
 
 /**

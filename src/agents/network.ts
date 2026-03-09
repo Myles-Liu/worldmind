@@ -117,7 +117,7 @@ export class NetworkAgent extends BaseAgent {
     const knowledgeTopics = repos.flatMap(r => [r.fullName, r.owner, r.language, ...r.topics].filter(Boolean)) as string[];
 
     const systemPrompt = this.buildSystemPrompt({
-      taskDescription: 'Analyze the relationships between trending GitHub repositories. Identify clusters, key players, and ecosystem insights.',
+      taskDescription: 'Analyze the relationships between trending entities. Identify clusters, key players, and ecosystem insights.',
       topics: knowledgeTopics,
       additionalContext: `Relationship signals:\n${relationshipContext}`,
       responseFormat: `{
@@ -139,9 +139,9 @@ export class NetworkAgent extends BaseAgent {
 }`,
     });
 
-    const userPrompt = `Analyze the relationships between these trending GitHub repositories:
+    const userPrompt = `Analyze the relationships between these trending entities:
 
-Repositories:
+Entities:
 ${repoSummary}
 
 Relationship signals:

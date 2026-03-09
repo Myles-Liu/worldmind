@@ -112,7 +112,7 @@ export class TechAgent extends BaseAgent {
     ];
 
     const systemPrompt = this.buildSystemPrompt({
-      taskDescription: 'Analyze trending GitHub repositories to identify rising and declining technologies, adoption patterns, and emerging paradigm shifts.',
+      taskDescription: 'Analyze trending entities to identify rising and declining technologies, adoption patterns, and emerging paradigm shifts.',
       topics: knowledgeTopics,
       responseFormat: `{
   "risingTechnologies": [
@@ -126,7 +126,7 @@ export class TechAgent extends BaseAgent {
 }`,
     });
 
-    const userPrompt = `Analyze the technology trends from these trending GitHub repositories:
+    const userPrompt = `Analyze the technology trends from these trending entities:
 
 Language distribution:
 ${languageStr || 'No language data available'}

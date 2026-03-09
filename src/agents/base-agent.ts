@@ -47,6 +47,9 @@ export abstract class BaseAgent implements Agent {
   /** Shared context bus for inter-agent communication. */
   protected sharedBus: SharedContextBus | null = null;
 
+  /** Domain-specific context injected into Layer 1. Set via setDomainContext(). */
+  protected domainContext: string = '';
+
   private soulContent: string = '';
 
   // Agent's internal state — subclasses can use this for persistent memory
@@ -119,6 +122,16 @@ export abstract class BaseAgent implements Agent {
   }
 
   /**
+   * Set domain-specific context for this agent.
+   * Injected into Layer 1 (Identity) after the soul file.
+   * 
+   * Typically called by the pipeline runner using DomainConfig.agentContext[role].
+   */
+  setDomainContext(context: string): void {
+    this.domainContext = context;
+  }
+
+  /**
    * Get knowledge context relevant to the given topics.
    */
   protected getKnowledgeContext(topics: string[]): string {
@@ -149,6 +162,10 @@ export abstract class BaseAgent implements Agent {
     const identityParts: string[] = [];
     if (this.soulContent) {
       identityParts.push(this.soulContent);
+    }
+    // Domain-specific context (from DomainConfig.agentContext)
+    if (this.domainContext) {
+      identityParts.push(`\nDomain context:\n${this.domainContext}`);
     }
     // Temporal awareness — agents know when they are
     const now = new Date();
