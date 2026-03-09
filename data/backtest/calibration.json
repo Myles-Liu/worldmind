@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-03-09T05:53:31.346Z",
+  "observationDays": 3,
+  "repoCount": 6,
+  "calibration": {
+    "meanError": -0.0078117024224195475,
+    "meanAbsError": 0.36668485761569825,
+    "medianAbsError": 0.3179774932572775,
+    "overestimateRate": 0.3333333333333333,
+    "calibrationBias": -0.0078117024224195475,
+    "byConfidenceBucket": [
+      {
+        "bucket": "30-50%",
+        "count": 4,
+        "accuracy": 0.75
+      },
+      {
+        "bucket": "50-70%",
+        "count": 2,
+        "accuracy": 0
+      },
+      {
+        "bucket": "70-90%",
+        "count": 0,
+        "accuracy": 0
+      },
+      {
+        "bucket": "90%+",
+        "count": 0,
+        "accuracy": 0
+      }
+    ]
+  },
+  "results": [
+    {
+      "repo": "electric-sql/pglite",
+      "predicted": 7000,
+      "actual": 7127,
+      "confidence": 0.42,
+      "error": -0.017819559421916657,
+      "absError": 0.017819559421916657,
+      "direction": "exact"
+    },
+    {
+      "repo": "cohere-ai/cohere-toolkit",
+      "predicted": 2600,
+      "actual": 2144,
+      "confidence": 0.4,
+      "error": 0.2126865671641791,
+      "absError": 0.2126865671641791,
+      "direction": "over"
+    },
+    {
+      "repo": "jina-ai/reader",
+      "predicted": 4200,
+      "actual": 5913,
+      "confidence": 0.35,
+      "error": -0.28970065956367325,
+      "absError": 0.28970065956367325,
+      "direction": "under"
+    },
+    {
+      "repo": "karpathy/LLM101n",
+      "predicted": 22000,
+      "actual": 32257,
+      "confidence": 0.5,
+      "error": -0.3179774932572775,
+      "absError": 0.3179774932572775,
+      "direction": "under"
+    },
+    {
+      "repo": "stanford-oval/storm",
+      "predicted": 8500,
+      "actual": 16932,
+      "confidence": 0.12,
+      "error": -0.4979919678714859,
+      "absError": 0.4979919678714859,
+      "direction": "under"
+    },
+    {
+      "repo": "face-hh/griddycode",
+      "predicted": 2000,
+      "actual": 1073,
+      "confidence": 0.62,
+      "error": 0.863932898415657,
+      "absError": 0.863932898415657,
+      "direction": "over"
+    }
+  ],
+  "lesson": "Calibration from 6 backtests (observation window: 3 days):\n- Systematic bias: UNDERESTIMATES by 1% on average\n- Median absolute error: 32%\n- Overestimate rate: 33%\n- Correction factor: multiply raw predictions by 1.01 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence"
+}

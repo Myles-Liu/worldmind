@@ -45,6 +45,7 @@ export const EventSource = z.enum([
   'collector:new-repos',
   'collector:hn',
   'collector:rss',
+  'collector:backtest',
   'agent:trend',
   'agent:network',
   'agent:tech',
