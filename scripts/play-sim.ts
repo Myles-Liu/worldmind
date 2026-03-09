@@ -16,6 +16,8 @@
 import { WorldEngine } from '../src/player/engine.js';
 import { SimulationOrchestrator } from '../src/player/orchestrator.js';
 import { DirectorRuntime } from '../src/player/runtime-director.js';
+import { OpenClawRuntime } from '../src/player/runtime-openclaw.js';
+import { OpenClawGatewayClient } from '../src/player/openclaw-api.js';
 import type { AgentRuntime, AgentPersona } from '../src/player/agent-runtime.js';
 import { loadWorld, listWorlds, generateProfileCSV, buildWorldContext } from '../src/player/world-config.js';
 import type { Role } from '../src/player/types.js';
@@ -90,11 +92,19 @@ function createRuntime(worldContext: string, worldName: string): AgentRuntime {
       });
     }
     case 'openclaw': {
-      // Dynamic import to avoid hard dependency
-      // For now, fallback to director with a warning
-      warn('OpenClaw runtime: requires OpenClaw gateway running. Using sessions_spawn API.');
-      // TODO: implement when testing with live OpenClaw gateway
-      throw new Error('OpenClaw runtime not yet wired to live gateway. Use --runtime director for now.');
+      const gatewayUrl = process.env.OPENCLAW_GATEWAY_URL ?? 'http://127.0.0.1:18789';
+      const gatewayToken = process.env.OPENCLAW_GATEWAY_TOKEN ?? process.env.OPENCLAW_AUTH_TOKEN ?? '';
+      if (!gatewayToken) {
+        throw new Error('OpenClaw runtime requires OPENCLAW_GATEWAY_TOKEN env var (or set in .env)');
+      }
+      const api = new OpenClawGatewayClient({
+        baseUrl: gatewayUrl,
+        token: gatewayToken,
+      });
+      return new OpenClawRuntime({
+        model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
+        decideTimeoutSec: 120,
+      }, api);
     }
     default:
       throw new Error(`Unknown runtime: ${runtimeArg}. Available: director, openclaw`);
