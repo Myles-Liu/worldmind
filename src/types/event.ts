@@ -1,26 +1,10 @@
 import { z } from 'zod';
 
 // ─── Event Types ────────────────────────────────────────────────
+// Core events are domain-agnostic. Domain adapters can use any string.
 
-export const EventType = z.enum([
-  // Collector events (raw observations)
-  'repo_discovered',
-  'repo_trending',
-  'repo_stars_updated',
-  'repo_fork_created',
-  'repo_issue_opened',
-  'repo_pr_opened',
-  'repo_pr_merged',
-  'repo_release_published',
-  'user_discovered',
-  'user_followed',
-  'user_contributed',
-  'org_discovered',
-
-  // Discovery pipeline events
-  'new_repo_discovered',  // NewRepoScanner: fresh repo with early traction
-  'hn_mention',           // HNCollector: repo mentioned on Hacker News
-
+/** Core event types used by the engine itself. */
+export const CoreEventTypes = [
   // Agent events (analysis outputs)
   'trend_signal',
   'network_update',
@@ -35,31 +19,65 @@ export const EventType = z.enum([
   'cycle_completed',
   'agent_error',
   'belief_updated',
-]);
-export type EventType = z.infer<typeof EventType>;
+] as const;
+
+/** GitHub domain event types. */
+export const GitHubEventTypes = [
+  'repo_discovered',
+  'repo_trending',
+  'repo_stars_updated',
+  'repo_fork_created',
+  'repo_issue_opened',
+  'repo_pr_opened',
+  'repo_pr_merged',
+  'repo_release_published',
+  'user_discovered',
+  'user_followed',
+  'user_contributed',
+  'org_discovered',
+  'new_repo_discovered',
+  'hn_mention',
+] as const;
+
+/**
+ * EventType is now an open string (not a closed enum).
+ * Core + GitHub types are pre-defined for convenience.
+ * Custom domains can use any string as an event type.
+ */
+export const EventType = z.string();
+export type EventType = string;
+
+// Type-safe constants for known event types
+export const EVENT = {
+  // Core
+  TREND_SIGNAL: 'trend_signal' as EventType,
+  NETWORK_UPDATE: 'network_update' as EventType,
+  TECH_TREND: 'tech_trend' as EventType,
+  PREDICTION_CREATED: 'prediction_created' as EventType,
+  PREDICTION_CHALLENGED: 'prediction_challenged' as EventType,
+  PREDICTION_FINALIZED: 'prediction_finalized' as EventType,
+  PREDICTION_VERIFIED: 'prediction_verified' as EventType,
+  CYCLE_STARTED: 'cycle_started' as EventType,
+  CYCLE_COMPLETED: 'cycle_completed' as EventType,
+  AGENT_ERROR: 'agent_error' as EventType,
+  BELIEF_UPDATED: 'belief_updated' as EventType,
+  // GitHub domain
+  REPO_DISCOVERED: 'repo_discovered' as EventType,
+  REPO_TRENDING: 'repo_trending' as EventType,
+  NEW_REPO_DISCOVERED: 'new_repo_discovered' as EventType,
+  HN_MENTION: 'hn_mention' as EventType,
+} as const;
 
 // ─── Event Source ───────────────────────────────────────────────
+// Also open — any string. Convention: "category:name"
 
-export const EventSource = z.enum([
-  'collector:github',
-  'collector:new-repos',
-  'collector:hn',
-  'collector:rss',
-  'collector:backtest',
-  'agent:trend',
-  'agent:network',
-  'agent:tech',
-  'agent:predict',
-  'agent:challenge',
-  'system:orchestrator',
-  'system:validator',
-]);
-export type EventSource = z.infer<typeof EventSource>;
+export const EventSource = z.string();
+export type EventSource = string;
 
 // ─── World Event ────────────────────────────────────────────────
 
 export const WorldEvent = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   timestamp: z.string(), // ISO 8601
   type: EventType,
   source: EventSource,
