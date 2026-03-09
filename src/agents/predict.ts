@@ -60,7 +60,7 @@ export class PredictAgent extends BaseAgent {
 
     // Raw repo data for concrete predictions
     const repoEvents = events.filter(
-      (e) => e.type === 'repo_trending' || e.type === 'repo_discovered',
+      (e) => e.type === 'repo_trending' || e.type === 'repo_discovered' || e.type === 'new_repo_discovered',
     );
 
     if (!hasBusData && !hasEventData && repoEvents.length === 0) {

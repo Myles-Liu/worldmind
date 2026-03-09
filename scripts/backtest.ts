@@ -16,6 +16,8 @@
  *   npx tsx scripts/backtest.ts --collect-only     # just collect star histories
  *   npx tsx scripts/backtest.ts --predict-only     # skip collection, use cached data
  *   npx tsx scripts/backtest.ts --observation-days 3  # give agent 3 days of data (default: 3)
+ *   npx tsx scripts/backtest.ts --fast             # Trend+Predict only, skip Challenge/Round2 (~2x faster)
+ *   npx tsx scripts/backtest.ts --case storm       # run only cases matching substring
  */
 
 import { execSync } from 'node:child_process';
@@ -35,6 +37,8 @@ import type { AgentOutput } from '../src/types/agent.js';
 const args = process.argv.slice(2);
 const collectOnly = args.includes('--collect-only');
 const predictOnly = args.includes('--predict-only');
+const fastMode = args.includes('--fast');
+const caseFilter = args.find((_, i) => args[i - 1] === '--case') ?? null;
 const observationDays = parseInt(args.find((_, i) => args[i - 1] === '--observation-days') ?? '3', 10);
 const GITHUB_TOKEN = process.env['GITHUB_TOKEN'] ?? '';
 const DATA_DIR = 'data/backtest';
@@ -266,7 +270,7 @@ function buildBacktestCases(histories: StarHistory[], obsDays: number): Backtest
  * Run the Predict pipeline on a backtest case.
  * Returns the predicted star count at Day 30.
  */
-async function runPrediction(btCase: BacktestCase, kb: KnowledgeBase): Promise<{
+async function runPrediction(btCase: BacktestCase, kb: KnowledgeBase, fast = false): Promise<{
   predictedStars: number;
   confidence: number;
   reasoning: string;
@@ -318,16 +322,19 @@ async function runPrediction(btCase: BacktestCase, kb: KnowledgeBase): Promise<{
   const predictions = await predictAgent.analyze([event]);
   bus.publish('predict', predictions);
 
-  const challengeAgent = new ChallengeAgent();
-  challengeAgent.setKnowledgeBase(kb);
-  challengeAgent.setSharedBus(bus);
-  const challenges = await challengeAgent.analyze([event]);
-  bus.publish('challenge', challenges);
-
-  // Round 2
   let finalPredictions = predictions;
-  if (challenges.length > 0 && predictions.length > 0) {
-    finalPredictions = await predictAgent.revise(predictions, challenges);
+
+  if (!fast) {
+    const challengeAgent = new ChallengeAgent();
+    challengeAgent.setKnowledgeBase(kb);
+    challengeAgent.setSharedBus(bus);
+    const challenges = await challengeAgent.analyze([event]);
+    bus.publish('challenge', challenges);
+
+    // Round 2
+    if (challenges.length > 0 && predictions.length > 0) {
+      finalPredictions = await predictAgent.revise(predictions, challenges);
+    }
   }
 
   // Find the best prediction for this repo
@@ -401,7 +408,7 @@ async function main() {
 ║  WorldMind Backtesting Engine                               ║
 ║  "Test predictions against history, not against the future" ║
 ╚══════════════════════════════════════════════════════════════╝
-  Observation window: ${observationDays} days after discovery
+  Observation window: ${observationDays} days after discovery${fastMode ? '\n  ⚡ Fast mode: Trend+Predict only (no Challenge/Round2)' : ''}${caseFilter ? `\n  🔍 Case filter: "${caseFilter}"` : ''}
 `);
 
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -459,7 +466,15 @@ async function main() {
 
   console.log(`\n═══ Phase 2: Building Backtest Cases ═══\n`);
   const cases = buildBacktestCases(histories, observationDays);
-  console.log(`\n  ${cases.length} valid backtest cases from ${histories.length} repos\n`);
+  // Apply case filter
+  if (caseFilter) {
+    const before = cases.length;
+    const filtered = cases.filter(c => c.repo.toLowerCase().includes(caseFilter.toLowerCase()));
+    console.log(`  Filter '${caseFilter}': ${filtered.length}/${before} cases match`);
+    cases.splice(0, cases.length, ...filtered);
+  }
+
+  console.log(`\n  ${cases.length} backtest cases${fastMode ? ' (fast mode: Trend+Predict only)' : ''}\n`);
 
   if (cases.length === 0) {
     console.log('  No valid cases. Need repos with 35+ days of data and peak > 50 stars/day.\n');
@@ -485,7 +500,7 @@ async function main() {
     console.log(`     Actual 30d result: ${btCase.actualStars30d} stars`);
 
     try {
-      const pred = await runPrediction(btCase, kb);
+      const pred = await runPrediction(btCase, kb, fastMode);
       if (!pred) {
         console.log(`     ⚠️  No prediction produced`);
         continue;

@@ -1,22 +1,22 @@
 {
-  "timestamp": "2026-03-09T06:52:00.545Z",
+  "timestamp": "2026-03-09T07:26:00.720Z",
   "observationDays": 3,
-  "repoCount": 6,
+  "repoCount": 1,
   "calibration": {
-    "meanError": -0.20174555350940496,
-    "meanAbsError": 0.2881883395790567,
-    "medianAbsError": 0.3404363267376966,
-    "overestimateRate": 0.16666666666666666,
-    "calibrationBias": -0.20174555350940496,
+    "meanError": 0.03354594849988188,
+    "meanAbsError": 0.03354594849988188,
+    "medianAbsError": 0.03354594849988188,
+    "overestimateRate": 0,
+    "calibrationBias": 0.03354594849988188,
     "byConfidenceBucket": [
       {
         "bucket": "30-50%",
-        "count": 5,
-        "accuracy": 0.4
+        "count": 0,
+        "accuracy": 0
       },
       {
         "bucket": "50-70%",
-        "count": 2,
+        "count": 1,
         "accuracy": 1
       },
       {
@@ -33,59 +33,14 @@
   },
   "results": [
     {
-      "repo": "face-hh/griddycode",
-      "predicted": 950,
-      "actual": 1073,
-      "confidence": 0.65,
-      "error": -0.11463187325256291,
-      "absError": 0.11463187325256291,
-      "direction": "under"
-    },
-    {
-      "repo": "cohere-ai/cohere-toolkit",
-      "predicted": 2700,
-      "actual": 2144,
-      "confidence": 0.42,
-      "error": 0.2593283582089552,
-      "absError": 0.2593283582089552,
-      "direction": "over"
-    },
-    {
-      "repo": "electric-sql/pglite",
-      "predicted": 5100,
-      "actual": 7127,
-      "confidence": 0.5,
-      "error": -0.2844113932931107,
-      "absError": 0.2844113932931107,
-      "direction": "under"
-    },
-    {
-      "repo": "jina-ai/reader",
-      "predicted": 3900,
-      "actual": 5913,
-      "confidence": 0.45,
-      "error": -0.3404363267376966,
-      "absError": 0.3404363267376966,
-      "direction": "under"
-    },
-    {
       "repo": "stanford-oval/storm",
-      "predicted": 11000,
+      "predicted": 17500,
       "actual": 16932,
-      "confidence": 0.3,
-      "error": -0.3503425466572171,
-      "absError": 0.3503425466572171,
-      "direction": "under"
-    },
-    {
-      "repo": "karpathy/LLM101n",
-      "predicted": 20000,
-      "actual": 32257,
-      "confidence": 0.35,
-      "error": -0.3799795393247977,
-      "absError": 0.3799795393247977,
-      "direction": "under"
+      "confidence": 0.52,
+      "error": 0.03354594849988188,
+      "absError": 0.03354594849988188,
+      "direction": "exact"
     }
   ],
-  "lesson": "Calibration from 6 backtests (observation window: 3 days):\n- Systematic bias: UNDERESTIMATES by 20% on average\n- Median absolute error: 34%\n- Overestimate rate: 17%\n- Correction factor: multiply raw predictions by 1.25 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence"
+  "lesson": "Calibration from 1 backtests (observation window: 3 days):\n- Systematic bias: OVERESTIMATES by 3% on average\n- Median absolute error: 3%\n- Overestimate rate: 0%\n- Correction factor: multiply raw predictions by 0.97 to debias\n- High confidence (>70%) predictions are still poorly calibrated — lower your confidence"
 }
