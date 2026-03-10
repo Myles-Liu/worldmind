@@ -194,7 +194,7 @@ Return ONLY the JSON array, no other text.`;
       if (agent.feed.length > 0) {
         parts.push('Feed:');
         for (const item of agent.feed.slice(0, 8)) {
-          parts.push(`  [#${item.postId}] @${item.authorName}: ${item.content.slice(0, 120)} (❤️${item.likes} 💬${item.comments})`);
+          parts.push(`  [#${item.postId}] @${item.authorName}: ${item.content} (❤️${item.likes} 💬${item.comments})`);
         }
       } else {
         parts.push('Feed: (empty)');
@@ -264,8 +264,8 @@ Return ONLY the JSON array, no other text.`;
 
   private describeDecision(d: AgentDecision): string {
     switch (d.action) {
-      case 'post': return `Posted: "${(d.content ?? '').slice(0, 80)}"`;
-      case 'comment': return `Commented on post #${d.targetPostId}: "${(d.content ?? '').slice(0, 60)}"`;
+      case 'post': return `Posted: "${d.content ?? ''}"`;
+      case 'comment': return `Commented on post #${d.targetPostId}: "${d.content ?? ''}"`;
       case 'like': return `Liked post #${d.targetPostId}`;
       case 'follow': return `Followed user #${d.targetUserId}`;
       default: return 'Did nothing';

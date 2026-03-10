@@ -195,16 +195,16 @@ export class AgentMemoryManager {
   }, agentNames: Map<number, string>): void {
     const getName = (id: number) => agentNames.get(id) ?? `agent_${id}`;
 
-    // Posts → episodic memory for the author
+    // Posts → episodic memory for the author (store full content)
     for (const p of db.newPosts) {
       this.recordAction(p.userId, getName(p.userId), round,
-        `I posted: "${p.content.slice(0, 80)}"`, 0.7);
+        `I posted: "${p.content}"`, 0.7);
     }
 
-    // Comments → memory for both author and post owner
+    // Comments → memory for both author and post owner (store full content)
     for (const c of db.newComments) {
       this.recordAction(c.userId, getName(c.userId), round,
-        `I commented on ${getName(c.postAuthor)}'s post: "${c.content.slice(0, 60)}"`, 0.6);
+        `I commented on ${getName(c.postAuthor)}'s post: "${c.content}"`, 0.6);
       this.recordInteraction(c.postAuthor, getName(c.postAuthor),
         c.userId, getName(c.userId), 'commented on my post', 0.1);
     }
