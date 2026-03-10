@@ -198,6 +198,7 @@ async function doJoin() {
     MY_NAME = name;
     document.getElementById('join-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+    if (r.round != null) document.getElementById('round-badge').textContent = `Round ${r.round}`;
     connectWS();
     loadAgents();
     loadFeed();
