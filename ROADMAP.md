@@ -1,7 +1,14 @@
 # WorldMind Multiplayer — Feature Roadmap
 
 > Created: 2026-03-10
-> Status: Planning
+> Last Updated: 2026-03-10
+
+| Phase | Status | Commit |
+|-------|--------|--------|
+| Phase 1: 扩展 Action | ✅ Done | `dc50e85` |
+| Phase 2: 群聊系统 | ✅ Done | `b8d8129` |
+| Phase 3: 外部工具 | 🔲 Planned | — |
+| Phase 4: Interview 复盘 | ✅ Done | `da3a085` |
 
 ---
 
