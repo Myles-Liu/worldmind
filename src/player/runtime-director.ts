@@ -106,6 +106,9 @@ export class DirectorRuntime extends BaseAgentRuntime {
     sessions: AgentSession[],
     contexts: Map<string, RoundContext>,
   ): Promise<AgentDecision[]> {
+    // Compress memories (LLM distillation) before building agent inputs
+    await this.memoryManager.compressMemories({ onlyIfDirty: true });
+
     // Build agent inputs for the director
     const agentInputs = sessions.map(s => {
       const ctx = contexts.get(s.sessionId);

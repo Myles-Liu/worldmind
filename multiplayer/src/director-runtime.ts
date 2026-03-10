@@ -129,6 +129,10 @@ export class DirectorNpcRuntime implements NpcRuntime {
     const director = this.ensureDirector();
     this.roundCounter++;
 
+    // Compress memories (LLM distillation) before building agent inputs
+    // This runs in parallel for all agents, only if entries changed
+    await this.memoryManager.compressMemories({ onlyIfDirty: true });
+
     const agents = [];
     for (const sid of sessionIds) {
       const persona = this.personas.get(sid);

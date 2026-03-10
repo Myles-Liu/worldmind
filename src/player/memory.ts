@@ -12,6 +12,24 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { getDefaultLLMClient } from '../llm/client.js';
+
+// ─── Compression Prompt ─────────────────────────────────────────
+
+const COMPRESS_SYSTEM_PROMPT = `You are a memory compression engine. Given an agent's full memory log, distill it into a concise summary that preserves:
+
+1. Key events (what the agent did and experienced)
+2. Important relationships (who they interacted with and how)
+3. Formed opinions and insights
+4. Emotional tone and personality quirks shown
+
+Rules:
+- Output ONLY the compressed summary, no explanations
+- Keep the same perspective (first person if original was first person)
+- Preserve specific names, numbers, and key details
+- Use bullet points for clarity
+- Target the specified character length
+- Prioritize recent and high-importance events`;
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -28,6 +46,10 @@ export interface AgentMemoryState {
   agentName: string;
   entries: AgentMemoryEntry[];
   relationships: Map<number, RelationshipState>;
+  /** LLM-compressed summary cache */
+  compressedSummary?: string;
+  /** Entries count when summary was last compressed */
+  compressedAtCount?: number;
 }
 
 export interface RelationshipState {
@@ -131,8 +153,49 @@ export class AgentMemoryManager {
   }
 
   /**
+   * Build the raw (uncompressed) memory text for an agent.
+   * This is the full-fidelity version used as input to LLM compression.
+   */
+  private buildRawSummary(mem: AgentMemoryState): string {
+    const parts: string[] = [];
+
+    // All entries sorted by round then importance
+    const entries = [...mem.entries]
+      .sort((a, b) => a.round - b.round || b.importance - a.importance);
+
+    if (entries.length > 0) {
+      parts.push('Memory entries:');
+      for (const e of entries) {
+        const tag = e.round >= 0 ? `[R${e.round}]` : '';
+        parts.push(`- ${tag}(${e.type}) ${e.content}`);
+      }
+    }
+
+    // Key relationships
+    const rels = Array.from(mem.relationships.values())
+      .sort((a, b) => b.interactions - a.interactions)
+      .slice(0, 8);
+
+    if (rels.length > 0) {
+      parts.push('');
+      parts.push('Relationships:');
+      for (const r of rels) {
+        const feeling = r.sentiment > 0.3 ? '(positive)'
+          : r.sentiment < -0.3 ? '(negative)'
+          : '(neutral)';
+        parts.push(`- ${r.targetName}: ${r.interactions} interactions ${feeling}, recent: ${r.notes.slice(-3).join(', ')}`);
+      }
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
    * Generate a memory summary for injection into an agent's prompt.
    * Returns a concise text that captures what the agent remembers.
+   *
+   * Synchronous fast path: returns cached compressed summary if available,
+   * otherwise falls back to raw summary with token limit.
    */
   getMemorySummary(agentId: number, maxTokens = 500): string {
     const mem = this.memories.get(agentId);
@@ -140,47 +203,71 @@ export class AgentMemoryManager {
       return '';
     }
 
-    const parts: string[] = [];
-
-    // Recent episodes (last 10, sorted by importance)
-    const recent = mem.entries
-      .slice(-20)
-      .sort((a, b) => b.importance - a.importance)
-      .slice(0, 8);
-
-    if (recent.length > 0) {
-      parts.push('Recent memory:');
-      for (const e of recent) {
-        parts.push(`- ${e.content}`);
-      }
+    // Use compressed summary if fresh enough
+    if (mem.compressedSummary && mem.compressedAtCount === mem.entries.length) {
+      return mem.compressedSummary;
     }
 
-    // Key relationships
-    const rels = Array.from(mem.relationships.values())
-      .sort((a, b) => b.interactions - a.interactions)
-      .slice(0, 5);
-
-    if (rels.length > 0) {
-      parts.push('');
-      parts.push('People you know:');
-      for (const r of rels) {
-        const feeling = r.sentiment > 0.3 ? '(positive)'
-          : r.sentiment < -0.3 ? '(negative)'
-          : '(neutral)';
-        parts.push(`- ${r.targetName}: ${r.interactions} interactions ${feeling}`);
-      }
-    }
-
-    const summary = parts.join('\n');
-
-    // Rough token estimate: ~4 chars per token for English, ~1.5 for Chinese
-    const estimatedTokens = summary.length / 2;
+    // Fallback: raw summary with hard token limit
+    const raw = this.buildRawSummary(mem);
+    const estimatedTokens = raw.length / 2;
     if (estimatedTokens > maxTokens) {
-      // Truncate
-      return summary.slice(0, maxTokens * 2) + '\n...';
+      return raw.slice(0, maxTokens * 2) + '\n...';
+    }
+    return raw;
+  }
+
+  /**
+   * Compress all agent memories using LLM.
+   * Call this once per round (or every N rounds) — it's async and batched.
+   * After this call, getMemorySummary() will return compressed versions.
+   */
+  async compressMemories(options?: {
+    /** Only compress if entries changed since last compression */
+    onlyIfDirty?: boolean;
+    /** Target summary length in chars (default: 600) */
+    targetLength?: number;
+  }): Promise<number> {
+    const onlyIfDirty = options?.onlyIfDirty ?? true;
+    const targetLength = options?.targetLength ?? 600;
+    const llm = getDefaultLLMClient();
+    let compressed = 0;
+
+    const tasks: Promise<void>[] = [];
+
+    for (const [id, mem] of this.memories) {
+      // Skip if nothing changed since last compression
+      if (onlyIfDirty && mem.compressedAtCount === mem.entries.length) {
+        continue;
+      }
+
+      const raw = this.buildRawSummary(mem);
+      // Skip if raw is already short enough
+      if (raw.length <= targetLength) {
+        mem.compressedSummary = raw;
+        mem.compressedAtCount = mem.entries.length;
+        continue;
+      }
+
+      tasks.push((async () => {
+        try {
+          const result = await llm.complete(
+            COMPRESS_SYSTEM_PROMPT,
+            `Agent: ${mem.agentName}\nTarget length: ~${targetLength} chars\n\nFull memory:\n${raw}`,
+            { temperature: 0.2, maxTokens: 1024 },
+          );
+          mem.compressedSummary = result;
+          mem.compressedAtCount = mem.entries.length;
+          compressed++;
+        } catch (e) {
+          // Compression failed — keep using raw fallback, no crash
+          console.error(`[memory] Failed to compress memory for ${mem.agentName}:`, e);
+        }
+      })());
     }
 
-    return summary;
+    await Promise.all(tasks);
+    return compressed;
   }
 
   /**
@@ -254,6 +341,8 @@ export class AgentMemoryManager {
         agentName: mem.agentName,
         entries: mem.entries,
         relationships: Array.from(mem.relationships.entries()).map(([k, v]) => [k, v]),
+        compressedSummary: mem.compressedSummary,
+        compressedAtCount: mem.compressedAtCount,
       };
     }
     writeFileSync(this.savePath, JSON.stringify(data, null, 2), 'utf-8');
@@ -269,6 +358,8 @@ export class AgentMemoryManager {
           agentName: mem.agentName,
           entries: mem.entries,
           relationships: new Map(mem.relationships),
+          compressedSummary: mem.compressedSummary,
+          compressedAtCount: mem.compressedAtCount,
         };
         this.memories.set(Number(id), state);
       }
