@@ -10,7 +10,9 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
-import { createServer as createHttpServer, type Server as HttpServer } from 'http';
+import { createServer as createHttpServer, type Server as HttpServer, type IncomingMessage, type ServerResponse } from 'http';
+import { readFileSync, existsSync } from 'fs';
+import { join as pathJoin } from 'path';
 import type {
   Persona,
   Decision,
@@ -245,6 +247,9 @@ export class WorldServer {
 
       const handled = await this.httpApi!.handle(req, res);
       if (!handled) {
+        // Serve static UI for non-API routes
+        if (this.serveStatic(req, res, reqUrl)) return;
+
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'not found', endpoints: ['/api/discover', '/api/join', '/api/action', '/api/poll/*', '/api/admin/*', '/api/feed', '/api/notifications', '/api/state', '/api/agents', '/api/leave'] }));
       }
@@ -549,6 +554,30 @@ export class WorldServer {
 
   /** Get poll system (exposed for serve.ts to pass to NPC runtime) */
   getPollSystem(): PollSystem | null { return this.pollSystem; }
+
+  /** Serve static files from multiplayer/public */
+  private serveStatic(_req: IncomingMessage, res: ServerResponse, url: URL): boolean {
+    let filePath = url.pathname;
+    if (filePath === '/') filePath = '/index.html';
+
+    // Only serve index.html for now (single-page app)
+    if (filePath !== '/index.html') return false;
+
+    // Find public dir relative to this file
+    const publicDir = pathJoin(import.meta.dirname ?? '.', '../public');
+    const fullPath = pathJoin(publicDir, 'index.html');
+
+    if (!existsSync(fullPath)) return false;
+
+    try {
+      const content = readFileSync(fullPath, 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(content);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   // ─── Connection handling ──────────────────────────────────────
 
