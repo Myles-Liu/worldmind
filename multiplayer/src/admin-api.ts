@@ -6,6 +6,10 @@
  *   POST /api/admin/mute       { adminToken, playerId, rounds }
  *   POST /api/admin/unmute     { adminToken, playerId }
  *   POST /api/admin/broadcast  { adminToken, message }
+ *   POST /api/admin/pause      { adminToken }
+ *   POST /api/admin/resume     { adminToken }
+ *   POST /api/admin/round      { adminToken }  — trigger one round manually
+ *   POST /api/admin/inject     { adminToken, content, author? }  — inject system event/news
  *   GET  /api/admin/players    ?adminToken=
  *   POST /api/admin/config     { adminToken, roundInterval?, playerWait? }
  */
@@ -38,11 +42,26 @@ export interface AdminDeps {
   /** Broadcast a system message to all players */
   broadcast: (message: string) => void;
 
+  /** Pause auto-rounds */
+  pause: () => boolean;
+
+  /** Resume auto-rounds */
+  resume: () => boolean;
+
+  /** Trigger one round manually */
+  triggerRound: () => Promise<void>;
+
+  /** Whether auto-rounds are currently paused */
+  isPaused: () => boolean;
+
+  /** Inject a system event as a post into the world */
+  injectEvent: (content: string, author?: string) => Promise<void>;
+
   /** Update runtime config */
   updateConfig: (patch: { roundInterval?: number; playerWait?: number }) => void;
 
   /** Get current config */
-  getConfig: () => { roundInterval: number; playerWait: number; maxPlayers: number; npcCount: number };
+  getConfig: () => { roundInterval: number; playerWait: number; maxPlayers: number; npcCount: number; paused: boolean; round: number };
 
   log: (msg: string) => void;
 }
@@ -110,6 +129,10 @@ export class AdminApi {
       case 'mute': return this.handleMute(body, res);
       case 'unmute': return this.handleUnmute(body, res);
       case 'broadcast': return this.handleBroadcast(body, res);
+      case 'pause': return this.handlePause(res);
+      case 'resume': return this.handleResume(res);
+      case 'round': return this.handleTriggerRound(res);
+      case 'inject': return this.handleInject(body, res);
       case 'config': return this.handleConfig(body, res);
       default: return this.json(res, 404, { error: `unknown admin route: ${route}` });
     }
@@ -154,6 +177,40 @@ export class AdminApi {
 
     this.deps.broadcast(message);
     this.deps.log(`[admin] Broadcast: ${message.slice(0, 80)}`);
+    return this.json(res, 200, { success: true });
+  }
+
+  private handlePause(res: ServerResponse): true {
+    const paused = this.deps.pause();
+    if (paused) {
+      this.deps.log('[admin] Auto-rounds paused');
+      this.deps.broadcast('⏸️ 世界已暂停');
+    }
+    return this.json(res, 200, { success: true, paused: this.deps.isPaused() });
+  }
+
+  private handleResume(res: ServerResponse): true {
+    const resumed = this.deps.resume();
+    if (resumed) {
+      this.deps.log('[admin] Auto-rounds resumed');
+      this.deps.broadcast('▶️ 世界已恢复');
+    }
+    return this.json(res, 200, { success: true, paused: this.deps.isPaused() });
+  }
+
+  private async handleTriggerRound(res: ServerResponse): Promise<true> {
+    this.deps.log('[admin] Manual round triggered');
+    // Don't await — trigger async so response returns immediately
+    this.deps.triggerRound().catch(e => this.deps.log(`[admin] Manual round error: ${e}`));
+    return this.json(res, 200, { success: true, message: 'Round triggered' });
+  }
+
+  private async handleInject(body: any, res: ServerResponse): Promise<true> {
+    const { content, author } = body;
+    if (!content || typeof content !== 'string') return this.json(res, 400, { error: 'content required (string)' });
+
+    await this.deps.injectEvent(content, author);
+    this.deps.log(`[admin] Injected event: "${content.slice(0, 80)}"${author ? ` as ${author}` : ''}`);
     return this.json(res, 200, { success: true });
   }
 

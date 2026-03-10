@@ -38,12 +38,14 @@ export interface AgentFeedItem {
 export interface AgentDecision {
   agentId: number;
   action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote'
-    | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'do_nothing';
+    | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'vote' | 'do_nothing';
   content?: string;      // for post/comment/quote/send_to_group
   targetPostId?: number; // for comment/like/repost/quote
   targetUserId?: number; // for follow
   groupId?: number;      // for join_group/leave_group/send_to_group
   groupName?: string;    // for create_group
+  pollId?: string;       // for vote
+  optionIndex?: number;  // for vote (0-based)
   reasoning?: string;    // internal monologue (logged, not shown)
 }
 
@@ -179,12 +181,14 @@ For each character, you must decide their ONE action this round based on:
 Respond with a JSON array. Each element:
 {
   "agentId": <number>,
-  "action": "post" | "comment" | "like" | "follow" | "repost" | "quote" | "create_group" | "join_group" | "send_to_group" | "do_nothing",
-  "content": "<text for post/comment/quote/send_to_group — omit for like/repost/follow/join_group/do_nothing>",
+  "action": "post" | "comment" | "like" | "follow" | "repost" | "quote" | "create_group" | "join_group" | "send_to_group" | "vote" | "do_nothing",
+  "content": "<text for post/comment/quote/send_to_group — omit for like/repost/follow/join_group/vote/do_nothing>",
   "targetPostId": <number, for comment/like/repost/quote>,
   "targetUserId": <number, for follow>,
   "groupId": <number, for join_group/send_to_group>,
   "groupName": "<string, for create_group>",
+  "pollId": "<string, for vote — see active polls below>",
+  "optionIndex": <number, for vote — 0-based option index>,
   "reasoning": "<1 sentence internal thought>"
 }
 
@@ -245,6 +249,10 @@ Return ONLY the JSON array, no other text.`;
           content: d.content,
           targetPostId: d.targetPostId,
           targetUserId: d.targetUserId,
+          groupId: d.groupId,
+          groupName: d.groupName,
+          pollId: d.pollId,
+          optionIndex: d.optionIndex,
           reasoning: d.reasoning,
         }));
       }
@@ -262,6 +270,10 @@ Return ONLY the JSON array, no other text.`;
             content: d.content,
             targetPostId: d.targetPostId,
             targetUserId: d.targetUserId,
+            groupId: d.groupId,
+            groupName: d.groupName,
+            pollId: d.pollId,
+            optionIndex: d.optionIndex,
             reasoning: d.reasoning,
           });
         } catch { /* skip malformed */ }
@@ -284,6 +296,12 @@ Return ONLY the JSON array, no other text.`;
       case 'comment': return `Commented on post #${d.targetPostId}: "${d.content ?? ''}"`;
       case 'like': return `Liked post #${d.targetPostId}`;
       case 'follow': return `Followed user #${d.targetUserId}`;
+      case 'repost': return `Reposted post #${d.targetPostId}`;
+      case 'quote': return `Quoted post #${d.targetPostId}: "${d.content ?? ''}"`;
+      case 'create_group': return `Created group "${d.groupName ?? ''}"`;
+      case 'join_group': return `Joined group #${d.groupId}`;
+      case 'send_to_group': return `Sent to group #${d.groupId}: "${d.content ?? ''}"`;
+      case 'vote': return `Voted on poll ${d.pollId} option ${d.optionIndex}`;
       default: return 'Did nothing';
     }
   }

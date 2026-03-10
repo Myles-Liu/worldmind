@@ -34,6 +34,10 @@ export class DirectorNpcRuntime implements NpcRuntime {
   private personas: Map<string, AgentPersona> = new Map(); // sessionId → persona
   private personaList: AgentPersona[] = [];
   private roundCounter = 0;
+  private _pollContext = '';
+
+  /** Set dynamic poll context (injected before each decideBatch) */
+  set pollContext(ctx: string) { this._pollContext = ctx; }
 
   constructor(config: DirectorRuntimeConfig) {
     this.worldContext = config.worldContext;
@@ -156,9 +160,13 @@ export class DirectorNpcRuntime implements NpcRuntime {
     if (agents.length === 0) return [];
 
     const round = contexts.values().next().value?.round ?? this.roundCounter;
+    // Append active poll context so NPCs can vote
+    const effectiveContext = this._pollContext
+      ? `${this.worldContext}${this._pollContext}`
+      : this.worldContext;
     const decisions = await director.directRound({
       round,
-      worldContext: this.worldContext,
+      worldContext: effectiveContext,
       agents,
     });
 
@@ -182,6 +190,8 @@ export class DirectorNpcRuntime implements NpcRuntime {
       targetUserId: d.targetUserId,
       groupId: d.groupId,
       groupName: d.groupName,
+      pollId: d.pollId,
+      optionIndex: d.optionIndex,
       reasoning: d.reasoning,
     };
   }

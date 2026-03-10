@@ -51,12 +51,14 @@ export interface RoundContext {
 export interface AgentDecision {
   agentId: number;
   action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote'
-    | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'do_nothing';
+    | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'vote' | 'do_nothing';
   content?: string;
   targetPostId?: number;
   targetUserId?: number;
   groupId?: number;
   groupName?: string;
+  pollId?: string;
+  optionIndex?: number;
   reasoning?: string;         // optional explanation (for logging/debugging)
 }
 

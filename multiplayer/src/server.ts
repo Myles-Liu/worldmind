@@ -26,6 +26,7 @@ import { HttpApi } from './http-api.js';
 import { handleDiscover } from './discovery.js';
 import { AdminApi } from './admin-api.js';
 import { PollSystem } from './poll-system.js';
+import type { DirectorNpcRuntime } from './director-runtime.js';
 
 // ─── Connected Player ───────────────────────────────────────────
 
@@ -92,6 +93,7 @@ export class WorldServer {
   private log: (msg: string) => void;
   private startTime = Date.now();
   private listenPort = 0;
+  private paused = false;
   private adminApi: AdminApi | null = null;
   private pollSystem: PollSystem | null = null;
 
@@ -112,12 +114,34 @@ export class WorldServer {
         kickPlayer: (playerId) => this.kickPlayer(playerId),
         getPlayers: () => this.listAllPlayers(),
         broadcast: (message) => this.broadcastSystemMessage(message),
+        pause: () => {
+          if (this.roundTimer) {
+            clearInterval(this.roundTimer);
+            this.roundTimer = null;
+            this.paused = true;
+            return true;
+          }
+          return false;
+        },
+        resume: () => {
+          if (this.paused && this.roundInterval > 0) {
+            this.paused = false;
+            this.roundTimer = setInterval(() => this.runRound().catch(e =>
+              this.log(`Round error: ${e}`)
+            ), this.roundInterval);
+            return true;
+          }
+          return false;
+        },
+        isPaused: () => this.paused,
+        triggerRound: () => this.runRound(),
+        injectEvent: (content, author) => this.injectSystemEvent(content, author),
         updateConfig: (patch) => {
           if (patch.roundInterval !== undefined) {
             this.roundInterval = patch.roundInterval * 1000;
-            // Restart timer
+            // Restart timer if not paused
             if (this.roundTimer) clearInterval(this.roundTimer);
-            if (this.roundInterval > 0) {
+            if (this.roundInterval > 0 && !this.paused) {
               this.roundTimer = setInterval(() => this.runRound().catch(e =>
                 this.log(`Round error: ${e}`)
               ), this.roundInterval);
@@ -132,6 +156,8 @@ export class WorldServer {
           playerWait: this.playerWaitMs / 1000,
           maxPlayers: this.maxPlayers,
           npcCount: this.npcs.length,
+          paused: this.paused,
+          round: this.round,
         }),
         log: this.log,
       });
@@ -299,6 +325,10 @@ export class WorldServer {
     const npcPromise = (async (): Promise<Decision[]> => {
       const decisions: Decision[] = [];
       if (this.npcRuntime && this.npcSessionIds.size > 0) {
+        // Inject active poll context for NPC awareness
+        if (this.pollSystem && 'pollContext' in this.npcRuntime) {
+          (this.npcRuntime as DirectorNpcRuntime).pollContext = this.pollSystem.getPollSummaryForNpc();
+        }
         const activeIds = [...this.npcSessionIds.entries()]
           .sort(() => Math.random() - 0.5)
           .slice(0, Math.max(2, Math.floor(this.npcSessionIds.size * 0.7)));
@@ -386,8 +416,17 @@ export class WorldServer {
       }
     }
 
+    // Handle NPC vote actions via poll system
+    const npcNonVoteDecisions = npcDecisions.filter(d => {
+      if (d.action === 'vote' && this.pollSystem && d.pollId) {
+        this.pollSystem.vote(d.agentId, d.pollId, d.optionIndex ?? 0);
+        return false;
+      }
+      return true;
+    });
+
     // 4. Execute all
-    const all = [...npcDecisions, ...playerDecisions].filter(d => d.action !== 'do_nothing');
+    const all = [...npcNonVoteDecisions, ...playerDecisions].filter(d => d.action !== 'do_nothing');
     if (all.length > 0) {
       await this.platform.executeBatch(all);
     }
@@ -485,6 +524,22 @@ export class WorldServer {
       }
     }
     return `agent_${id}`;
+  }
+
+  /** Inject a system event as a post (uses NPC agent 0 if no author specified) */
+  private async injectSystemEvent(content: string, author?: string): Promise<void> {
+    // Find author agent id
+    let agentId = 0; // default: first NPC
+    if (author) {
+      const npc = this.npcs.find(n => n.username.toLowerCase() === author.toLowerCase());
+      if (npc) agentId = npc.id;
+    }
+
+    const prefixed = author ? content : `📢 [系统事件] ${content}`;
+    await this.platform.executeBatch([{ agentId, action: 'post', content: prefixed }]);
+
+    // Broadcast to all players
+    this.broadcastSystemMessage(prefixed);
   }
 
   /** Get poll system (exposed for serve.ts to pass to NPC runtime) */
