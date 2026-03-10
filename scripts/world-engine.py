@@ -170,8 +170,10 @@ async def main():
         ActionType.CREATE_POST,
         ActionType.LIKE_POST,
         ActionType.REPOST,
+        ActionType.QUOTE_POST,
         ActionType.CREATE_COMMENT,
         ActionType.FOLLOW,
+        ActionType.UNFOLLOW,
         ActionType.DO_NOTHING,
     ]
 
@@ -409,6 +411,19 @@ async def main():
                         step_actions[target_agent] = ManualAction(
                             action_type=ActionType.FOLLOW,
                             action_args={"followee_id": d.get("targetUserId", 0)},
+                        )
+                    elif action_type == "repost":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.REPOST,
+                            action_args={"post_id": d.get("targetPostId", 1)},
+                        )
+                    elif action_type == "quote":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.QUOTE_POST,
+                            action_args={
+                                "post_id": d.get("targetPostId", 1),
+                                "content": d.get("content", ""),
+                            },
                         )
                     else:
                         log(f"[engine] directed_step: unknown action {action_type}")

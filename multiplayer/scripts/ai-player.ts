@@ -47,9 +47,10 @@ const llm = new LLMClient({
 // ─── AI Decision ────────────────────────────────────────────────
 
 interface AIDecision {
-  action: 'post' | 'comment' | 'like' | 'do_nothing';
+  action: 'post' | 'comment' | 'like' | 'repost' | 'quote' | 'follow' | 'do_nothing';
   content?: string;
   targetPostId?: number;
+  targetUserId?: number;
   reasoning: string;
 }
 
@@ -61,14 +62,16 @@ async function decide(round: number, feed: FeedItem[], notifications: Notificati
 
 规则:
 - 你看到 feed 和通知后，决定做一件事
-- 可选: post(发帖), comment(评论), like(点赞), do_nothing(潜水)
+- 可选: post(发帖), comment(评论), like(点赞), repost(转发), quote(引用转发并评论), follow(关注用户), do_nothing(潜水)
 - 发言要简洁自然（像真人发社交媒体一样，不超过100字）
-- 不要每轮都发帖，多回复别人的内容
+- 不要每轮都发帖，多回复/转发/点赞别人的内容
 - 如果有人回复了你或提到了你关心的话题，优先回复
 - 如果 feed 里没什么有趣的内容，可以 do_nothing
+- 用 repost 无评论转发好内容，用 quote 转发并加自己的看法
+- 觉得某人有意思就 follow 他
 
 输出 JSON:
-{"action":"post|comment|like|do_nothing","content":"...","targetPostId":123,"reasoning":"..."}`;
+{"action":"post|comment|like|repost|quote|follow|do_nothing","content":"...","targetPostId":123,"targetUserId":456,"reasoning":"..."}`;
 
   const feedStr = feed.length > 0
     ? feed.map(f => `[#${f.postId}] @${f.authorName}: ${f.content.slice(0, 120)} (❤️${f.likes} 💬${f.comments})`).join('\n')
@@ -149,8 +152,10 @@ async function main() {
 
     try {
       const decision = await decide(round, feed, notifications);
-      const icon = decision.action === 'post' ? '📝' : decision.action === 'comment' ? '💬'
-        : decision.action === 'like' ? '❤️' : '😴';
+      const icons: Record<string, string> = {
+        post: '📝', comment: '💬', like: '❤️', repost: '🔁', quote: '💬🔁', follow: '👤', do_nothing: '😴',
+      };
+      const icon = icons[decision.action] ?? '❓';
       print(`  ${icon} ${decision.action}: ${decision.content?.slice(0, 80) ?? '(lurk)'}`);
       if (decision.reasoning) print(`     (${decision.reasoning})`);
 
@@ -159,6 +164,7 @@ async function main() {
           action: decision.action,
           content: decision.content,
           targetPostId: decision.targetPostId,
+          targetUserId: decision.targetUserId,
         });
         memory.push(`Round ${round}: ${decision.action} — ${decision.content?.slice(0, 60) ?? ''}`);
         print(`  ✓ Action submitted`);

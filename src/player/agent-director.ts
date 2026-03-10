@@ -37,9 +37,9 @@ export interface AgentFeedItem {
 
 export interface AgentDecision {
   agentId: number;
-  action: 'post' | 'comment' | 'like' | 'follow' | 'do_nothing';
-  content?: string;      // for post/comment
-  targetPostId?: number; // for comment/like
+  action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote' | 'do_nothing';
+  content?: string;      // for post/comment/quote
+  targetPostId?: number; // for comment/like/repost/quote
   targetUserId?: number; // for follow
   reasoning?: string;    // internal monologue (logged, not shown)
 }
@@ -156,18 +156,20 @@ For each character, you must decide their ONE action this round based on:
 - Controversial posts should get reactions. Boring posts can be ignored
 - Relationships matter: friends engage more, rivals challenge each other
 - Keep posts concise and natural. No one writes essays on social media
-- **CRITICAL: At least 30% of all actions should be interactions with existing posts (comment or like), NOT new posts.** A real social feed is mostly reactions, not broadcasts. If the feed has interesting posts, PREFER commenting/liking over creating new posts.
+- **CRITICAL: At least 30% of all actions should be interactions with existing posts (comment, like, repost, or quote), NOT new posts.** A real social feed is mostly reactions, not broadcasts. If the feed has interesting posts, PREFER commenting/liking/reposting over creating new posts.
 - When commenting, reference the specific post content. Show you actually read it.
 - When there are controversial or interesting posts in the feed, at least one character should react.
+- Use "repost" to share someone's post without comment (signal boost). Use "quote" to share with your own take added.
+- Use "follow" when a character finds someone genuinely interesting based on their posts — not randomly.
 
 # OUTPUT FORMAT
 
 Respond with a JSON array. Each element:
 {
   "agentId": <number>,
-  "action": "post" | "comment" | "like" | "follow" | "do_nothing",
-  "content": "<text for post or comment, omit for like/follow/do_nothing>",
-  "targetPostId": <number, for comment/like>,
+  "action": "post" | "comment" | "like" | "follow" | "repost" | "quote" | "do_nothing",
+  "content": "<text for post/comment/quote — omit for like/repost/follow/do_nothing>",
+  "targetPostId": <number, for comment/like/repost/quote>,
   "targetUserId": <number, for follow>,
   "reasoning": "<1 sentence internal thought>"
 }

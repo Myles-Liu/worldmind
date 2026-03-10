@@ -50,7 +50,7 @@ export interface RoundContext {
  */
 export interface AgentDecision {
   agentId: number;
-  action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'do_nothing';
+  action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote' | 'do_nothing';
   content?: string;
   targetPostId?: number;
   targetUserId?: number;
