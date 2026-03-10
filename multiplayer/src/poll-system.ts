@@ -66,6 +66,8 @@ export interface PollDeps {
   llm: PollLlmConfig;
   /** Resolve player token → { id, name } or null */
   resolveToken: (token: string) => { id: number; name: string } | null;
+  /** Verify admin token — returns true if valid */
+  isAdmin: (token: string) => boolean;
   /** Get agent display name by id */
   getAgentName: (id: number) => string;
   /** Broadcast event to all players */
@@ -191,8 +193,8 @@ export class PollSystem {
   }
 
   private async handleCreate(body: any, res: ServerResponse): Promise<true> {
-    const player = this.deps.resolveToken(body.token);
-    if (!player) return this.json(res, 401, { error: 'invalid token' });
+    const identity = this.resolveIdentity(body);
+    if (!identity) return this.json(res, 401, { error: 'token or adminToken required' });
 
     const { question } = body;
     if (!question || typeof question !== 'string') return this.json(res, 400, { error: 'question required' });
@@ -203,8 +205,8 @@ export class PollSystem {
     const pollId = randomBytes(6).toString('hex');
     const poll: Poll = {
       pollId,
-      creatorId: player.id,
-      creatorName: player.name,
+      creatorId: identity.id,
+      creatorName: identity.name,
       question,
       options,
       votes: new Map(),
@@ -215,7 +217,7 @@ export class PollSystem {
     };
 
     this.polls.set(pollId, poll);
-    this.deps.log(`[poll] Draft created by ${player.name}: "${question}" (${options.length} options)`);
+    this.deps.log(`[poll] Draft created by ${identity.name}: "${question}" (${options.length} options)`);
 
     return this.json(res, 200, {
       pollId,
@@ -226,13 +228,13 @@ export class PollSystem {
   }
 
   private async handleConfirm(body: any, res: ServerResponse): Promise<true> {
-    const player = this.deps.resolveToken(body.token);
-    if (!player) return this.json(res, 401, { error: 'invalid token' });
+    const identity = this.resolveIdentity(body);
+    if (!identity) return this.json(res, 401, { error: 'token or adminToken required' });
 
     const { pollId } = body;
     const poll = this.polls.get(pollId);
     if (!poll) return this.json(res, 404, { error: 'poll not found' });
-    if (poll.creatorId !== player.id) return this.json(res, 403, { error: 'only creator can confirm' });
+    if (!identity.isAdmin && poll.creatorId !== identity.id) return this.json(res, 403, { error: 'only creator or admin can confirm' });
     if (poll.status !== 'draft') return this.json(res, 400, { error: 'poll already confirmed' });
 
     // Allow modifications
@@ -281,12 +283,12 @@ export class PollSystem {
   }
 
   private async handleClose(body: any, res: ServerResponse): Promise<true> {
-    const player = this.deps.resolveToken(body.token);
-    if (!player) return this.json(res, 401, { error: 'invalid token' });
+    const identity = this.resolveIdentity(body);
+    if (!identity) return this.json(res, 401, { error: 'token or adminToken required' });
 
     const poll = this.polls.get(body.pollId);
     if (!poll) return this.json(res, 404, { error: 'poll not found' });
-    if (poll.creatorId !== player.id) return this.json(res, 403, { error: 'only creator can close' });
+    if (!identity.isAdmin && poll.creatorId !== identity.id) return this.json(res, 403, { error: 'only creator or admin can close' });
     if (poll.status === 'closed') return this.json(res, 400, { error: 'already closed' });
 
     this.closePoll(poll);
@@ -363,7 +365,23 @@ export class PollSystem {
     ];
   }
 
-  // ─── Helpers ────────────────────────────────────────────────
+  // ─── Auth helpers ──────────────────────────────────────────
+
+  /** Resolve identity: player token or admin token → { id, name, isAdmin } */
+  private resolveIdentity(body: any): { id: number; name: string; isAdmin: boolean } | null {
+    // Try player token first
+    if (body.token) {
+      const player = this.deps.resolveToken(body.token);
+      if (player) return { ...player, isAdmin: false };
+    }
+    // Try admin token
+    if (body.adminToken && this.deps.isAdmin(body.adminToken)) {
+      return { id: -1, name: '管理员', isAdmin: true };
+    }
+    return null;
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────
 
   private json(res: ServerResponse, status: number, data: unknown): true {
     res.writeHead(status, { 'Content-Type': 'application/json' });

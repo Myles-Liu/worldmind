@@ -165,9 +165,11 @@ export class WorldServer {
 
     // Poll system
     if (config.llm) {
+      const adminToken = config.adminToken ?? '';
       this.pollSystem = new PollSystem({
         llm: config.llm,
         resolveToken: (token) => this.resolvePlayerToken(token),
+        isAdmin: (token) => !!adminToken && token === adminToken,
         getAgentName: (id) => this.getAgentName(id),
         broadcast: (event) => {
           this.broadcast({ type: 'event', event: event.type, data: event.data });
