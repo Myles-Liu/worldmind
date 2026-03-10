@@ -10,6 +10,7 @@
 
 import { WorldClient } from '../src/client.js';
 import { LLMClient } from '../../src/llm/client.js';
+import { scanForServers } from '../src/discovery.js';
 import type { FeedItem, Notification } from '../src/types.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -30,12 +31,34 @@ try {
 const args = process.argv.slice(2);
 const get = (f: string) => args.find((_, i) => args[i - 1] === `--${f}`);
 
-const serverUrl = get('server') ?? 'ws://localhost:3000';
+const serverArg = get('server'); // undefined means auto-discover
 const playerName = get('name') ?? `ai-${Date.now() % 10000}`;
 const personality = get('personality') ?? '一个友善的技术爱好者，喜欢深入讨论';
 const maxRounds = parseInt(get('rounds') ?? '0'); // 0 = infinite
 
 const print = (m: string) => process.stdout.write(m + '\n');
+
+/** Resolve server URL — use provided or auto-discover */
+async function resolveServer(): Promise<string> {
+  if (serverArg) return serverArg;
+
+  print('🔍 No --server specified, scanning for servers...');
+  const servers = await scanForServers({
+    timeout: 500,
+    concurrency: 50,
+    onLog: (m) => print(`  ${m}`),
+  });
+
+  if (servers.length === 0) {
+    throw new Error('No WorldMind servers found on subnet. Start a server with --host 0.0.0.0 or specify --server');
+  }
+
+  // Pick first available server (or one with most players for activity)
+  const best = servers.sort((a, b) => b.info.players - a.info.players)[0]!;
+  const url = `ws://${best.ip}:${best.port}`;
+  print(`  → Auto-selected: ${best.info.name} at ${url} (${best.info.players}/${best.info.maxPlayers} players)\n`);
+  return url;
+}
 
 // ─── LLM ────────────────────────────────────────────────────────
 const llm = new LLMClient({
@@ -135,6 +158,8 @@ ${memStr}
 // ─── Main ───────────────────────────────────────────────────────
 
 async function main() {
+  const serverUrl = await resolveServer();
+
   print(`\n🤖 AI Player: @${playerName}`);
   print(`   性格: ${personality}`);
   print(`   Server: ${serverUrl}`);

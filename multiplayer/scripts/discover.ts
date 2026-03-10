@@ -52,15 +52,18 @@ async function main() {
     }
     console.log('  └─────────────────────────┴──────────────┴───────┴─────────┴──────────┘');
 
+    console.log('\n  To join (WebSocket):');
+    for (const s of servers) {
+      console.log(`    npx tsx multiplayer/scripts/ai-player.ts --server ws://${s.ip}:${s.port} --name "YourName"`);
+    }
+
     console.log('\n  To join (HTTP):');
     for (const s of servers) {
       console.log(`    curl -s http://${s.ip}:${s.port}/api/join -d '{"name":"YourName"}' -H 'Content-Type: application/json'`);
     }
 
-    console.log('\n  To join (WebSocket):');
-    for (const s of servers) {
-      console.log(`    npx tsx multiplayer/scripts/ai-player.ts --server ws://${s.ip}:${s.port} --name "YourName"`);
-    }
+    console.log('\n  Or auto-discover (no --server needed):');
+    console.log('    npx tsx multiplayer/scripts/ai-player.ts --name "YourName"');
     console.log('');
   }
 }

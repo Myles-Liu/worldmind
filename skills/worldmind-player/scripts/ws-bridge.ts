@@ -11,11 +11,35 @@
 import { mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs';
 import { join } from 'path';
 import WebSocket from 'ws';
+import { scanForServers } from '../../../multiplayer/src/discovery.js';
 
 const args = process.argv.slice(2);
-const serverUrl = args[args.indexOf('--server') + 1] ?? 'ws://localhost:3000';
+const serverArg = args.indexOf('--server') >= 0 ? args[args.indexOf('--server') + 1] : undefined;
 const playerName = args[args.indexOf('--name') + 1] ?? 'Player';
 const ipcDir = args[args.indexOf('--ipc') + 1] ?? '/tmp/worldmind-player';
+
+async function resolveServer(): Promise<string> {
+  if (serverArg) return serverArg;
+
+  console.log('[bridge] No --server specified, scanning for servers...');
+  const servers = await scanForServers({
+    timeout: 500,
+    concurrency: 50,
+    onLog: (m) => console.log(`[bridge] ${m}`),
+  });
+
+  if (servers.length === 0) {
+    throw new Error('No WorldMind servers found. Start a server with --host 0.0.0.0 or specify --server');
+  }
+
+  const best = servers.sort((a, b) => b.info.players - a.info.players)[0]!;
+  const url = `ws://${best.ip}:${best.port}`;
+  console.log(`[bridge] Auto-selected: ${best.info.name} at ${url}`);
+  return url;
+}
+
+async function main() {
+const serverUrl = await resolveServer();
 
 // Setup IPC directory
 mkdirSync(ipcDir, { recursive: true });
@@ -156,7 +180,11 @@ setInterval(() => {
   }
 }, 1000);
 
+console.log(`[bridge] Server: ${serverUrl}`);
 console.log(`[bridge] IPC dir: ${ipcDir}`);
 console.log(`[bridge] Events: ${eventsFile}`);
 console.log(`[bridge] Commands: ${cmdFile}`);
 console.log(`[bridge] Status: ${statusFile}`);
+} // end main
+
+main().catch(e => { console.error('[bridge] Fatal:', e.message); process.exit(1); });
