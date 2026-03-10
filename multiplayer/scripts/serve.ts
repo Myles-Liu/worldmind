@@ -16,6 +16,7 @@ import { loadWorld, generateProfileCSV, buildWorldContext } from '../../src/play
 import type { Persona } from '../src/types.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import { randomBytes } from 'crypto';
 
 // ─── Load env ───────────────────────────────────────────────────
 try {
@@ -41,6 +42,7 @@ const agentCountArg = get('agents');
 const maxPlayerSlots = parseInt(get('player-slots') ?? '5');
 const playerWaitSec = parseInt(get('player-wait') ?? '30');
 const resumeDir = get('resume'); // path to previous run dir (e.g. data/social/2026-03-10-14-45-06)
+const adminToken = get('admin-token') ?? randomBytes(12).toString('hex');
 
 const print = (m: string) => process.stdout.write(m + '\n');
 
@@ -181,11 +183,18 @@ async function main() {
     roundIntervalSec: roundInterval,
     maxPlayers: maxPlayerSlots,
     playerWaitMs: playerWaitSec * 1000,
+    adminToken,
+    llm: {
+      apiKey: process.env.WORLDMIND_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
+      baseURL: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? 'https://api.openai.com/v1',
+      model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
+    },
     onLog: (m) => print(`  ${m}`),
   });
 
   await server.start(port, host);
   print(`\n  ✓ ws+http://${host}:${port}`);
+  print(`  🔑 Admin token: ${adminToken}`);
   print(`  Waiting for players...\n`);
 
   process.on('SIGINT', async () => {

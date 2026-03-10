@@ -193,6 +193,8 @@ export class HttpApi {
       targetUserId: body.targetUserId,
       groupId: body.groupId,
       groupName: body.groupName,
+      pollId: body.pollId,
+      optionIndex: body.optionIndex,
     };
 
     this.deps.log(`[HTTP] Action from ${player.name}: ${body.action}`);

@@ -24,6 +24,8 @@ import type {
 } from './types.js';
 import { HttpApi } from './http-api.js';
 import { handleDiscover } from './discovery.js';
+import { AdminApi } from './admin-api.js';
+import { PollSystem } from './poll-system.js';
 
 // ─── Connected Player ───────────────────────────────────────────
 
@@ -59,6 +61,12 @@ export interface ServerConfig {
   /** Milliseconds to wait for player actions after NPC decisions (default 30000) */
   playerWaitMs?: number;
 
+  /** Admin token (required for /api/admin/* endpoints). If omitted, admin API is disabled. */
+  adminToken?: string;
+
+  /** LLM config for poll option generation */
+  llm?: { apiKey: string; baseURL: string; model: string };
+
   /** Logging callback */
   onLog?: (msg: string) => void;
 }
@@ -84,6 +92,8 @@ export class WorldServer {
   private log: (msg: string) => void;
   private startTime = Date.now();
   private listenPort = 0;
+  private adminApi: AdminApi | null = null;
+  private pollSystem: PollSystem | null = null;
 
   constructor(config: ServerConfig) {
     this.platform = config.platform;
@@ -94,6 +104,53 @@ export class WorldServer {
     this.playerWaitMs = config.playerWaitMs ?? 30_000;
     this.roundInterval = (config.roundIntervalSec ?? 0) * 1000;
     this.log = config.onLog ?? console.log;
+
+    // Admin API
+    if (config.adminToken) {
+      this.adminApi = new AdminApi({
+        adminToken: config.adminToken,
+        kickPlayer: (playerId) => this.kickPlayer(playerId),
+        getPlayers: () => this.listAllPlayers(),
+        broadcast: (message) => this.broadcastSystemMessage(message),
+        updateConfig: (patch) => {
+          if (patch.roundInterval !== undefined) {
+            this.roundInterval = patch.roundInterval * 1000;
+            // Restart timer
+            if (this.roundTimer) clearInterval(this.roundTimer);
+            if (this.roundInterval > 0) {
+              this.roundTimer = setInterval(() => this.runRound().catch(e =>
+                this.log(`Round error: ${e}`)
+              ), this.roundInterval);
+            }
+          }
+          if (patch.playerWait !== undefined) {
+            this.playerWaitMs = patch.playerWait * 1000;
+          }
+        },
+        getConfig: () => ({
+          roundInterval: this.roundInterval / 1000,
+          playerWait: this.playerWaitMs / 1000,
+          maxPlayers: this.maxPlayers,
+          npcCount: this.npcs.length,
+        }),
+        log: this.log,
+      });
+    }
+
+    // Poll system
+    if (config.llm) {
+      this.pollSystem = new PollSystem({
+        llm: config.llm,
+        resolveToken: (token) => this.resolvePlayerToken(token),
+        getAgentName: (id) => this.getAgentName(id),
+        broadcast: (event) => {
+          this.broadcast({ type: 'event', event: event.type, data: event.data });
+          this.httpApi?.pushEvent(event);
+        },
+        worldContext: this.worldContext,
+        log: this.log,
+      });
+    }
   }
 
   async start(port: number, host: string = 'localhost'): Promise<void> {
@@ -141,10 +198,24 @@ export class WorldServer {
         }, this.startTime);
         return;
       }
+      const reqUrl = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+
+      // Admin API
+      if (this.adminApi && reqUrl.pathname.startsWith('/api/admin/')) {
+        await this.adminApi.handle(req, res, reqUrl);
+        return;
+      }
+
+      // Poll API
+      if (this.pollSystem && reqUrl.pathname.startsWith('/api/poll/')) {
+        await this.pollSystem.handle(req, res, reqUrl);
+        return;
+      }
+
       const handled = await this.httpApi!.handle(req, res);
       if (!handled) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'not found', endpoints: ['/api/discover', '/api/join', '/api/action', '/api/poll', '/api/feed', '/api/notifications', '/api/state', '/api/agents', '/api/leave'] }));
+        res.end(JSON.stringify({ error: 'not found', endpoints: ['/api/discover', '/api/join', '/api/action', '/api/poll/*', '/api/admin/*', '/api/feed', '/api/notifications', '/api/state', '/api/agents', '/api/leave'] }));
       }
     });
 
@@ -286,13 +357,33 @@ export class WorldServer {
     // WS players
     for (const [, player] of this.players) {
       if (player.pendingAction) {
+        // Skip muted players
+        if (this.adminApi?.isMuted(player.id)) {
+          this.log(`  Skipping muted player ${player.name}`);
+          player.pendingAction = null;
+          continue;
+        }
+        // Handle vote actions via poll system
+        if (player.pendingAction.action === 'vote' && this.pollSystem && player.pendingAction.pollId) {
+          this.pollSystem.vote(player.id, player.pendingAction.pollId, player.pendingAction.optionIndex ?? 0);
+          player.pendingAction = null;
+          continue;
+        }
         playerDecisions.push(player.pendingAction);
         player.pendingAction = null;
       }
     }
     // HTTP players
     if (this.httpApi) {
-      playerDecisions.push(...this.httpApi.collectActions());
+      const httpActions = this.httpApi.collectActions();
+      for (const action of httpActions) {
+        if (this.adminApi?.isMuted(action.agentId)) continue;
+        if (action.action === 'vote' && this.pollSystem && action.pollId) {
+          this.pollSystem.vote(action.agentId, action.pollId, action.optionIndex ?? 0);
+          continue;
+        }
+        playerDecisions.push(action);
+      }
     }
 
     // 4. Execute all
@@ -309,12 +400,95 @@ export class WorldServer {
     // HTTP players
     this.httpApi?.pushEvent({ type: 'round_end', data: { round: this.round, state } });
 
+    // Tick poll and mute systems
+    this.pollSystem?.tickRound();
+    this.adminApi?.tickMutes();
+
     const httpCount = this.httpApi?.playerCount ?? 0;
     this.log(`Round ${this.round}: ${npcDecisions.length} NPC + ${playerDecisions.length} player actions (${this.players.size} WS + ${httpCount} HTTP)`);
   }
 
   get playerCount(): number { return this.players.size; }
   get totalPlayerCount(): number { return this.players.size + (this.httpApi?.playerCount ?? 0); }
+
+  // ─── Admin / Poll helpers ─────────────────────────────────────
+
+  /** Kick a player by id from WS or HTTP */
+  private kickPlayer(playerId: number): boolean {
+    // WS players
+    for (const [ws, p] of this.players) {
+      if (p.id === playerId) {
+        this.send(ws, { type: 'event', event: 'kicked', data: { reason: 'Kicked by admin' } });
+        ws.close();
+        this.players.delete(ws);
+        this.log(`Kicked WS player: ${p.name} (#${p.id})`);
+        return true;
+      }
+    }
+    // HTTP players
+    if (this.httpApi) {
+      for (const [token, hp] of this.httpApi.getPlayers()) {
+        if (hp.id === playerId) {
+          this.httpApi.getPlayers().delete(token);
+          this.log(`Kicked HTTP player: ${hp.name} (#${hp.id})`);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /** List all connected players with mute info */
+  private listAllPlayers(): Array<{ id: number; name: string; type: 'ws' | 'http'; joinedAt: number; muted: boolean; muteRoundsLeft: number }> {
+    const list: Array<{ id: number; name: string; type: 'ws' | 'http'; joinedAt: number; muted: boolean; muteRoundsLeft: number }> = [];
+    for (const [, p] of this.players) {
+      const mute = this.adminApi?.getMuteInfo(p.id) ?? { muted: false, roundsLeft: 0 };
+      list.push({ id: p.id, name: p.name, type: 'ws', joinedAt: p.joinedAt, muted: mute.muted, muteRoundsLeft: mute.roundsLeft });
+    }
+    if (this.httpApi) {
+      for (const [, hp] of this.httpApi.getPlayers()) {
+        const mute = this.adminApi?.getMuteInfo(hp.id) ?? { muted: false, roundsLeft: 0 };
+        list.push({ id: hp.id, name: hp.name, type: 'http', joinedAt: hp.joinedAt, muted: mute.muted, muteRoundsLeft: mute.roundsLeft });
+      }
+    }
+    return list;
+  }
+
+  /** Broadcast a system message to all players */
+  private broadcastSystemMessage(message: string): void {
+    const event = { type: 'event', event: 'system_broadcast', data: { message } } as const;
+    this.broadcast(event);
+    this.httpApi?.pushEvent({ type: 'system_broadcast', data: { message } });
+  }
+
+  /** Resolve HTTP player token → { id, name } */
+  private resolvePlayerToken(token: string): { id: number; name: string } | null {
+    if (!this.httpApi) return null;
+    const player = this.httpApi.getPlayers().get(token);
+    if (player) return { id: player.id, name: player.name };
+    return null;
+  }
+
+  /** Get display name for any agent (NPC or player) */
+  private getAgentName(id: number): string {
+    // NPC
+    const npc = this.npcs.find(n => n.id === id);
+    if (npc) return npc.username;
+    // WS player
+    for (const [, p] of this.players) {
+      if (p.id === id) return p.name;
+    }
+    // HTTP player
+    if (this.httpApi) {
+      for (const [, hp] of this.httpApi.getPlayers()) {
+        if (hp.id === id) return hp.name;
+      }
+    }
+    return `agent_${id}`;
+  }
+
+  /** Get poll system (exposed for serve.ts to pass to NPC runtime) */
+  getPollSystem(): PollSystem | null { return this.pollSystem; }
 
   // ─── Connection handling ──────────────────────────────────────
 
@@ -371,6 +545,20 @@ export class WorldServer {
       case 'action': {
         const p = this.players.get(ws);
         if (!p) { this.send(ws, { type: 'error', message: 'not joined' }); return; }
+
+        // Mute check
+        if (this.adminApi?.isMuted(p.id) && msg.action !== 'do_nothing') {
+          this.send(ws, { type: 'action_ack', success: false, message: 'You are muted' });
+          return;
+        }
+
+        // Vote action — handle immediately via poll system
+        if (msg.action === 'vote' && this.pollSystem && msg.pollId) {
+          const result = this.pollSystem.vote(p.id, msg.pollId, msg.optionIndex ?? 0);
+          this.send(ws, { type: 'action_ack', success: result.success, message: result.error });
+          return;
+        }
+
         p.pendingAction = {
           agentId: p.id,
           action: msg.action,
@@ -379,6 +567,8 @@ export class WorldServer {
           targetUserId: msg.targetUserId,
           groupId: msg.groupId,
           groupName: msg.groupName,
+          pollId: msg.pollId,
+          optionIndex: msg.optionIndex,
         };
         this.send(ws, { type: 'action_ack', success: true });
 

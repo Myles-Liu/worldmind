@@ -35,7 +35,9 @@ export interface Notification {
 // ─── Actions ────────────────────────────────────────────────────
 
 export type ActionType = 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote'
-  | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'do_nothing';
+  | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group'
+  | 'create_poll' | 'vote'
+  | 'do_nothing';
 
 export interface Decision {
   agentId: number;
@@ -45,6 +47,8 @@ export interface Decision {
   targetUserId?: number;
   groupId?: number;
   groupName?: string;
+  pollId?: string;
+  optionIndex?: number;
   reasoning?: string;
 }
 
@@ -65,7 +69,7 @@ export interface WorldState {
 /** Client → Server */
 export type ClientMessage =
   | { type: 'join'; name: string; persona?: { role: string; personality: string } }
-  | { type: 'action'; action: ActionType; content?: string; targetPostId?: number; targetUserId?: number; groupId?: number; groupName?: string }
+  | { type: 'action'; action: ActionType; content?: string; targetPostId?: number; targetUserId?: number; groupId?: number; groupName?: string; pollId?: string; optionIndex?: number }
   | { type: 'feed'; limit?: number }
   | { type: 'notifications'; limit?: number }
   | { type: 'groups' }
