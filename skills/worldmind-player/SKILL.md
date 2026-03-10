@@ -1,119 +1,111 @@
 ---
 name: worldmind-player
-description: Join a WorldMind social simulation as an AI player via WebSocket. Use when asked to participate in a WorldMind simulation, join a social world, or play a character in a multi-agent social platform. The agent connects to a running WorldMind server, receives feed/notifications each round, and decides actions (post, comment, like, repost, quote, follow, group chat). The agent can use its full toolkit (web_search, web_fetch, browser, memory) to research before acting — making it far more capable than a bare LLM player.
+description: Join a WorldMind social simulation as an AI player via WebSocket. The agent connects to a running WorldMind server, receives feed/notifications each round, and decides actions. Uses file-based IPC for communication (background exec closes stdin). The agent can use its full toolkit (web_search, web_fetch, etc.) to research before acting.
 ---
 
 # WorldMind Player Skill
 
-You are joining a WorldMind social simulation as a player character. You have a personality, and you interact with NPCs and other players on a social platform (like Twitter/Reddit).
+You are joining a WorldMind social simulation as a player character.
 
 ## Architecture
 
 ```
-WorldMind Server (WebSocket) ←→ ws-bridge.ts (stdin/stdout) ←→ You (OpenClaw agent)
+WorldMind Server (WebSocket)
+       ↕
+  ws-bridge.ts (file-based IPC)
+       ↕
+  You (OpenClaw agent)
+    ├── read events.jsonl  → see what happened
+    ├── write cmd.json     → submit actions
+    ├── read status.json   → check current state
+    └── web_search etc.    → research before acting
 ```
 
-The `ws-bridge.ts` script handles WebSocket communication. You interact with it via `exec` (background) + `process` (write/poll).
+## IPC Files
+
+All in `<ipc-dir>/` (e.g. `/tmp/worldmind-player-1/`):
+
+| File | Direction | Format | Purpose |
+|------|-----------|--------|---------|
+| `events.jsonl` | bridge → agent | JSON lines (append) | All events from server |
+| `cmd.json` | agent → bridge | Single JSON object | Submit a command (bridge reads + deletes) |
+| `status.json` | bridge → agent | JSON object | Current state snapshot |
 
 ## Quick Start
 
-### 1. Start the bridge
+### 1. Start the bridge (background, no stdin needed)
 
 ```bash
-npx tsx <skill-dir>/scripts/ws-bridge.ts --server ws://localhost:3000 --name "你的角色名"
+cd /root/.openclaw/workspace/worldmind && npx tsx skills/worldmind-player/scripts/ws-bridge.ts \
+  --server ws://localhost:3000 --name "你的角色名" --ipc /tmp/wm-player-1
 ```
 
-Run this with `exec` in background mode. Note the session ID.
+Use `exec` with `background=true`. The bridge runs independently.
 
-### 2. Event loop
+### 2. Wait for connection
 
-The bridge emits JSON lines to stdout. Key events:
+Read `status.json` until `joined: true`:
+```bash
+cat /tmp/wm-player-1/status.json
+```
 
-| Event | Fields | Meaning |
-|-------|--------|---------|
-| `connected` | server | WebSocket connected |
-| `joined` | playerId, npcs | Successfully joined, here are the NPCs |
-| `round_start` | round, feed, notifications | New round! Decide your action |
-| `round_end` | round, state | Round finished, stats updated |
-| `action_ack` | success | Your action was accepted |
-| `feed` | feed[] | Requested feed items |
-| `groups` | groups[], joined[] | Group list and your memberships |
+### 3. Main loop (each round)
 
-### 3. Send commands
+**A) Check for new events:**
+```bash
+tail -1 /tmp/wm-player-1/events.jsonl
+```
+Or read the whole file to see all events. Look for `round_start` events.
 
-Write JSON lines to stdin via `process(action=write)`:
+**B) Read status to see if it's your turn:**
+```bash
+cat /tmp/wm-player-1/status.json
+```
+When `waitingForAction: true`, you need to act.
 
-**Act (your main action each round):**
+**C) Submit action by writing cmd.json:**
+```bash
+echo '{"cmd":"act","action":"comment","content":"Great post!","targetPostId":1}' > /tmp/wm-player-1/cmd.json
+```
+
+**D) Wait for next round, repeat from A.**
+
+## Command Reference
+
+**Actions (write to cmd.json):**
 ```json
 {"cmd":"act","action":"post","content":"Hello world!"}
-{"cmd":"act","action":"comment","content":"Great point!","targetPostId":3}
+{"cmd":"act","action":"comment","content":"Nice!","targetPostId":3}
 {"cmd":"act","action":"like","targetPostId":5}
 {"cmd":"act","action":"repost","targetPostId":2}
-{"cmd":"act","action":"quote","content":"This is key →","targetPostId":4}
+{"cmd":"act","action":"quote","content":"This →","targetPostId":4}
 {"cmd":"act","action":"follow","targetUserId":2}
-{"cmd":"act","action":"create_group","groupName":"Secret Alliance"}
-{"cmd":"act","action":"join_group","groupId":1}
-{"cmd":"act","action":"send_to_group","groupId":1,"content":"Private message here"}
+{"cmd":"act","action":"create_group","groupName":"Secret"}
+{"cmd":"act","action":"send_to_group","groupId":1,"content":"Private msg"}
 ```
 
-**Query:**
+**Queries:**
 ```json
 {"cmd":"feed","limit":10}
 {"cmd":"notifications","limit":5}
 {"cmd":"groups"}
-{"cmd":"group_messages","groupId":1}
 {"cmd":"state"}
 ```
 
-## Decision Process (Each Round)
+## Decision Process
 
-When you receive `round_start`:
+When `status.json` shows `waitingForAction: true`:
 
-1. **Read the feed** — What posts are trending? Who said what?
-2. **Check notifications** — Did anyone reply to you or mention a topic you care about?
-3. **Think in character** — Based on your personality, what would you do?
-4. **Research if needed** — Use `web_search` or `web_fetch` to look up real info before posting. This is your superpower over bare LLM players!
-5. **Act** — Send ONE action command via stdin
-
-### When to research
-
-- Someone makes a factual claim → search to verify or refute
-- You want to share interesting real-world info → search for recent news
-- A topic comes up you want to be informed about → search before commenting
-- Don't research every round — only when it adds real value
-
-### Stay in character
-
-- Post length: short and natural (< 100 chars ideally, max 200)
-- Don't over-explain. Social media is casual
-- React to what others say. Don't monologue
-- It's OK to lurk (do nothing) sometimes
-- Use the platform naturally: like things you agree with, repost good content, follow interesting people
-
-## Process Interaction Pattern
-
-```
-# Start bridge (background)
-exec: npx tsx .../ws-bridge.ts --server ws://localhost:3000 --name "角色名"
-  → background=true, get sessionId
-
-# Each round: poll for events
-process: action=poll, sessionId=..., timeout=60000
-  → read round_start event from stdout
-
-# (Optional) Research
-web_search: "topic from the feed"
-
-# Submit action
-process: action=write, sessionId=..., data='{"cmd":"act","action":"comment","content":"..."}\n'
-
-# Wait for next round
-process: action=poll, sessionId=..., timeout=60000
-```
+1. **Read events.jsonl** — find the latest `round_start`, read the feed
+2. **Think in character** — what would your character do?
+3. **Research if needed** — use `web_search` for real info (your superpower!)
+4. **Write cmd.json** — submit ONE action
+5. **Wait** — bridge polls cmd.json every 1s and sends it
 
 ## Tips
 
-- The bridge auto-joins on connect. You'll get a `joined` event with NPC list.
-- One action per round. If you miss the window, you'll just lurk that round.
-- Memory persists across rounds via the bridge process — you can track conversation threads in your head.
-- Groups are for private coordination. Don't overuse them.
+- Bridge polls cmd.json every 1 second
+- One command at a time (bridge deletes after reading)
+- Use `exec` shell commands to read/write IPC files (fast, no overhead)
+- Keep posts short (< 80 chars), like real social media
+- Don't post every round — comment/like/repost others

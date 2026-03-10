@@ -1,29 +1,52 @@
 /**
  * WebSocket bridge for OpenClaw agent ↔ WorldMind server.
  * 
- * Communicates via stdin (JSON commands) / stdout (JSON events).
- * The OpenClaw agent uses exec/process tools to interact with this bridge.
+ * Communication via file-based IPC (since background exec closes stdin):
+ *   - Events written to: <ipc-dir>/events.jsonl (append-only)
+ *   - Commands read from: <ipc-dir>/cmd.json (agent writes, bridge reads+deletes)
  * 
  * Usage:
- *   npx tsx ws-bridge.ts --server ws://localhost:3000 --name "Tony Stark"
+ *   npx tsx ws-bridge.ts --server ws://localhost:3000 --name "Tony Stark" --ipc /tmp/worldmind-player-1
  */
-import { createInterface } from 'readline';
+import { mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs';
+import { join } from 'path';
 import WebSocket from 'ws';
 
 const args = process.argv.slice(2);
 const serverUrl = args[args.indexOf('--server') + 1] ?? 'ws://localhost:3000';
 const playerName = args[args.indexOf('--name') + 1] ?? 'Player';
+const ipcDir = args[args.indexOf('--ipc') + 1] ?? '/tmp/worldmind-player';
+
+// Setup IPC directory
+mkdirSync(ipcDir, { recursive: true });
+const eventsFile = join(ipcDir, 'events.jsonl');
+const cmdFile = join(ipcDir, 'cmd.json');
+const statusFile = join(ipcDir, 'status.json');
+
+// Clear previous state
+writeFileSync(eventsFile, '', 'utf-8');
+if (existsSync(cmdFile)) unlinkSync(cmdFile);
+writeFileSync(statusFile, JSON.stringify({ connected: false, joined: false, playerId: null }), 'utf-8');
 
 function emit(data: any) {
-  console.log(JSON.stringify(data));
+  const line = JSON.stringify(data) + '\n';
+  writeFileSync(eventsFile, line, { flag: 'a' });
+  // Also log to stdout for debugging
+  console.log(line.trim());
+}
+
+function updateStatus(patch: Record<string, any>) {
+  let status: any = {};
+  try { status = JSON.parse(readFileSync(statusFile, 'utf-8')); } catch {}
+  Object.assign(status, patch);
+  writeFileSync(statusFile, JSON.stringify(status), 'utf-8');
 }
 
 const ws = new WebSocket(serverUrl);
-let joined = false;
 
 ws.on('open', () => {
   emit({ event: 'connected', server: serverUrl });
-  // Auto-join
+  updateStatus({ connected: true });
   ws.send(JSON.stringify({ type: 'join', name: playerName }));
 });
 
@@ -33,17 +56,20 @@ ws.on('message', (raw) => {
     
     switch (msg.type) {
       case 'joined':
-        joined = true;
         emit({ event: 'joined', playerId: msg.playerId, npcs: msg.npcs?.map((n: any) => ({ id: n.id, name: n.username })) });
+        updateStatus({ joined: true, playerId: msg.playerId });
         break;
       case 'round_start':
         emit({ event: 'round_start', round: msg.round, feed: msg.feed, notifications: msg.notifications });
+        updateStatus({ currentRound: msg.round, waitingForAction: true });
         break;
       case 'round_end':
         emit({ event: 'round_end', round: msg.round, state: msg.state });
+        updateStatus({ waitingForAction: false });
         break;
       case 'action_ack':
         emit({ event: 'action_ack', success: msg.success });
+        updateStatus({ waitingForAction: false, lastActionRound: msg.round });
         break;
       case 'feed_result':
         emit({ event: 'feed', feed: msg.feed });
@@ -73,6 +99,7 @@ ws.on('message', (raw) => {
 
 ws.on('close', () => {
   emit({ event: 'disconnected' });
+  updateStatus({ connected: false });
   process.exit(0);
 });
 
@@ -80,12 +107,15 @@ ws.on('error', (err) => {
   emit({ event: 'error', message: err.message });
 });
 
-// Read commands from stdin (JSON per line)
-const rl = createInterface({ input: process.stdin });
-rl.on('line', (line) => {
+// Poll for commands from file system (every 1s)
+setInterval(() => {
+  if (!existsSync(cmdFile)) return;
   try {
-    const cmd = JSON.parse(line.trim());
+    const raw = readFileSync(cmdFile, 'utf-8').trim();
+    if (!raw) return;
+    unlinkSync(cmdFile); // consume command
     
+    const cmd = JSON.parse(raw);
     switch (cmd.cmd) {
       case 'act':
         ws.send(JSON.stringify({
@@ -97,6 +127,7 @@ rl.on('line', (line) => {
           groupId: cmd.groupId,
           groupName: cmd.groupName,
         }));
+        emit({ event: 'cmd_sent', action: cmd.action });
         break;
       case 'feed':
         ws.send(JSON.stringify({ type: 'feed', limit: cmd.limit ?? 10 }));
@@ -121,6 +152,11 @@ rl.on('line', (line) => {
         emit({ event: 'error', message: `unknown cmd: ${cmd.cmd}` });
     }
   } catch (e) {
-    emit({ event: 'error', message: `stdin parse error: ${(e as Error).message}` });
+    emit({ event: 'error', message: `cmd parse error: ${(e as Error).message}` });
   }
-});
+}, 1000);
+
+console.log(`[bridge] IPC dir: ${ipcDir}`);
+console.log(`[bridge] Events: ${eventsFile}`);
+console.log(`[bridge] Commands: ${cmdFile}`);
+console.log(`[bridge] Status: ${statusFile}`);
