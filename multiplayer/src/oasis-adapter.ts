@@ -13,11 +13,12 @@ import { WorldEngine } from '../../src/player/engine.js';
 
 export class OasisPlatformAdapter implements PlatformAdapter {
   private engine: WorldEngine;
-  private nextPlayerId: number;
+  private playerSlotIds: number[];
+  private nextSlotIndex = 0;
 
-  constructor(engine: WorldEngine, startPlayerId = 1000) {
+  constructor(engine: WorldEngine, playerSlotIds: number[] = []) {
     this.engine = engine;
-    this.nextPlayerId = startPlayerId;
+    this.playerSlotIds = playerSlotIds;
   }
 
   async queryFeed(agentId: number, limit: number): Promise<FeedItem[]> {
@@ -68,9 +69,13 @@ export class OasisPlatformAdapter implements PlatformAdapter {
   }
 
   async registerPlayer(name: string, _persona?: { role: string; personality: string }): Promise<number> {
-    // TODO: actually register in OASIS DB so player posts appear in feed
-    // For now, assign a virtual ID
-    return this.nextPlayerId++;
+    // Use pre-allocated player slot IDs that are registered in OASIS DB
+    if (this.nextSlotIndex >= this.playerSlotIds.length) {
+      throw new Error(`No player slots available (max ${this.playerSlotIds.length})`);
+    }
+    const id = this.playerSlotIds[this.nextSlotIndex]!;
+    this.nextSlotIndex++;
+    return id;
   }
 
   async shutdown(): Promise<void> {

@@ -129,11 +129,13 @@ async function main() {
     });
   }
 
-  // Initialize engine (OASIS subprocess)
+  // Initialize engine (OASIS subprocess) — use timestamped DB
+  const dbPath = join(profileDir, `world_${Date.now()}.db`);
   const engine = new WorldEngine({
     platform: worldSettings.platform,
     agentCount: worldSettings.agentCount + (playerConfig ? 1 : 0),
     profilePath,
+    dbPath,
     llm: {
       apiKey: process.env.WORLDMIND_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
       baseUrl: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? '',

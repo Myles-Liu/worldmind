@@ -11,6 +11,7 @@
 import { WorldEngine } from '../../src/player/engine.js';
 import { WorldServer } from '../src/server.js';
 import { OasisPlatformAdapter } from '../src/oasis-adapter.js';
+import { DirectorNpcRuntime } from '../src/director-runtime.js';
 import { loadWorld, generateProfileCSV, buildWorldContext } from '../../src/player/world-config.js';
 import type { Persona } from '../src/types.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
@@ -36,6 +37,7 @@ const port = parseInt(get('port') ?? '3000');
 const roundInterval = parseInt(get('round-interval') ?? '0');
 const noNpcs = args.includes('--no-npcs');
 const agentCountArg = get('agents');
+const maxPlayerSlots = parseInt(get('player-slots') ?? '5');
 
 const print = (m: string) => process.stdout.write(m + '\n');
 
@@ -49,10 +51,21 @@ async function main() {
 
   const profileDir = join(process.cwd(), 'data/social');
   mkdirSync(profileDir, { recursive: true });
+
+  // Generate profile CSV with pre-allocated player slots
+  // so OASIS registers them as real agents with IDs
+  let profileCSV = generateProfileCSV(worldSettings);
+  for (let i = 0; i < maxPlayerSlots; i++) {
+    profileCSV += `\nplayer_${i},"Player ${i}","A real human exploring this simulation."`;
+  }
+
   const profilePath = join(profileDir, `serve_${Date.now()}.csv`);
-  writeFileSync(profilePath, generateProfileCSV(worldSettings), 'utf-8');
+  writeFileSync(profilePath, profileCSV, 'utf-8');
 
   const worldContext = buildWorldContext(worldSettings);
+
+  // Total agents = NPCs + player slots
+  const totalAgents = worldSettings.agentCount + maxPlayerSlots;
 
   // Build NPC personas
   const npcs: Persona[] = [];
@@ -66,11 +79,13 @@ async function main() {
     }
   }
 
-  // Init OASIS
+  // Init OASIS — use timestamped DB to avoid overwriting previous runs
+  const dbPath = join(profileDir, `world_${Date.now()}.db`);
   const engine = new WorldEngine({
     platform: worldSettings.platform,
-    agentCount: worldSettings.agentCount,
+    agentCount: totalAgents,
     profilePath,
+    dbPath,
     llm: {
       apiKey: process.env.WORLDMIND_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
       baseUrl: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? '',
@@ -81,26 +96,49 @@ async function main() {
 
   print(`  World: ${worldSettings.name} (${worldSettings.language})`);
   print(`  NPCs: ${noNpcs ? 'off' : worldSettings.agentCount}`);
+  print(`  Player slots: ${maxPlayerSlots}`);
+  print(`  DB: ${dbPath}`);
   print('  Starting OASIS...');
   await engine.init();
 
-  // Remap IDs
-  const agents = engine.getAgents(100);
+  // Remap NPC IDs to actual OASIS agent IDs
+  const agents = engine.getAgents(200);
+  const npcIds: number[] = [];
   for (let i = 0; i < npcs.length && i < agents.length; i++) {
     npcs[i]!.id = agents[i]!.id;
+    npcIds.push(agents[i]!.id);
   }
 
-  const platform = new OasisPlatformAdapter(engine);
+  // Pre-allocated player slot IDs (the agents after the NPCs)
+  const playerSlotIds: number[] = [];
+  for (let i = worldSettings.agentCount; i < agents.length && i < totalAgents; i++) {
+    playerSlotIds.push(agents[i]!.id);
+  }
+  print(`  NPC IDs: ${npcIds.join(', ')}`);
+  print(`  Player slot IDs: ${playerSlotIds.join(', ')}`);
 
-  // TODO: plug in NpcRuntime (DirectorRuntime adapter) for NPC auto-play
-  // For now, NPCs are static — server only accepts player connections
+  const platform = new OasisPlatformAdapter(engine, playerSlotIds);
+
+  // Create DirectorNpcRuntime for NPC auto-play
+  let npcRuntime: DirectorNpcRuntime | undefined;
+  if (!noNpcs) {
+    npcRuntime = new DirectorNpcRuntime({
+      worldContext,
+      llm: {
+        apiKey: process.env.WORLDMIND_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
+        baseURL: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? 'https://api.openai.com/v1',
+        model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
+      },
+    });
+  }
 
   const server = new WorldServer({
     platform,
     worldContext,
     npcs,
+    npcRuntime,
     roundIntervalSec: roundInterval,
-    maxPlayers: 50,
+    maxPlayers: maxPlayerSlots,
     onLog: (m) => print(`  ${m}`),
   });
 

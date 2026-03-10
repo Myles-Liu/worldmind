@@ -20,3 +20,4 @@ export type {
 export { WorldServer, type ServerConfig } from './server.js';
 export { WorldClient, type ClientConfig } from './client.js';
 export { OasisPlatformAdapter } from './oasis-adapter.js';
+export { DirectorNpcRuntime, type DirectorRuntimeConfig } from './director-runtime.js';
