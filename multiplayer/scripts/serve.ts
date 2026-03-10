@@ -59,7 +59,11 @@ async function main() {
     profileCSV += `\nplayer_${i},"Player ${i}","A real human exploring this simulation."`;
   }
 
-  const profilePath = join(profileDir, `serve_${Date.now()}.csv`);
+  // Format: 2026-01-02-23-59-01
+  const now = new Date();
+  const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+
+  const profilePath = join(profileDir, `serve_${timestamp}.csv`);
   writeFileSync(profilePath, profileCSV, 'utf-8');
 
   const worldContext = buildWorldContext(worldSettings);
@@ -80,7 +84,7 @@ async function main() {
   }
 
   // Init OASIS — use timestamped DB to avoid overwriting previous runs
-  const dbPath = join(profileDir, `world_${Date.now()}.db`);
+  const dbPath = join(profileDir, `world_${timestamp}.db`);
   const engine = new WorldEngine({
     platform: worldSettings.platform,
     agentCount: totalAgents,

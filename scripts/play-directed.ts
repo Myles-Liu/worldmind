@@ -103,7 +103,11 @@ async function main() {
   // Generate profiles
   const profileDir = join(process.cwd(), 'data/social');
   mkdirSync(profileDir, { recursive: true });
-  const profilePath = join(profileDir, `directed_${Date.now()}.csv`);
+  // Format: 2026-01-02-23-59-01
+  const now = new Date();
+  const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+
+  const profilePath = join(profileDir, `directed_${timestamp}.csv`);
   const playerConfig = role === 'player' ? {
     username: playerName,
     displayName: playerName,
@@ -130,7 +134,7 @@ async function main() {
   }
 
   // Initialize engine (OASIS subprocess) — use timestamped DB
-  const dbPath = join(profileDir, `world_${Date.now()}.db`);
+  const dbPath = join(profileDir, `world_${timestamp}.db`);
   const engine = new WorldEngine({
     platform: worldSettings.platform,
     agentCount: worldSettings.agentCount + (playerConfig ? 1 : 0),
