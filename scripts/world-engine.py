@@ -506,7 +506,8 @@ async def main():
                 conn = sqlite3.connect(db_path)
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute(
-                    """SELECT p.post_id, p.user_id, p.content, p.num_likes, 
+                    """SELECT p.post_id, p.user_id, p.content, p.num_likes, p.created_at,
+                              p.num_reposts,
                               COALESCE(NULLIF(u.name, ''), u.user_name, 'agent_' || u.user_id) as author_name,
                               (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.post_id) as num_comments
                        FROM post p
@@ -515,7 +516,22 @@ async def main():
                        LIMIT ?""",
                     (limit,),
                 )
-                feed = [dict(row) for row in cursor.fetchall()]
+                feed = []
+                for row in cursor.fetchall():
+                    item = dict(row)
+                    # Fetch comments for this post
+                    comments_cursor = conn.execute(
+                        """SELECT c.comment_id, c.user_id as commenter_id, c.content, c.created_at,
+                                  COALESCE(NULLIF(u2.name, ''), u2.user_name, 'agent_' || u2.user_id) as author_name
+                           FROM comment c
+                           JOIN user u2 ON c.user_id = u2.user_id
+                           WHERE c.post_id = ?
+                           ORDER BY c.created_at ASC
+                           LIMIT 10""",
+                        (item["post_id"],),
+                    )
+                    item["commentList"] = [dict(c) for c in comments_cursor.fetchall()]
+                    feed.append(item)
                 conn.close()
                 emit({"type": "feed_result", "agentId": agent_id, "feed": feed})
             except Exception as e:

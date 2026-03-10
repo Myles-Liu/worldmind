@@ -117,6 +117,13 @@ a { color: var(--accent); text-decoration: none; }
 .tab-btn { opacity: 0.6; }
 .tab-btn.active { opacity: 1; border-color: var(--accent); }
 
+/* Comments collapse */
+.comment-toggle { color: var(--accent); cursor: pointer; font-size: 12px; margin-top: 4px; }
+.comment-toggle:hover { text-decoration: underline; }
+.comment-list.collapsed { display: none; }
+.mention { color: var(--accent); font-weight: 600; }
+.timestamp { color: var(--text2); font-size: 11px; }
+
 /* Group chat */
 .group-item { padding: 10px; border-radius: 6px; margin-bottom: 6px; background: var(--bg); cursor: pointer; }
 .group-item:hover { background: var(--surface); border: 1px solid var(--border); }
@@ -190,7 +197,7 @@ a { color: var(--accent); text-decoration: none; }
     </div>
 
     <!-- Composer -->
-    <div class="composer">
+    <div class="composer" id="composer-area">
       <textarea id="compose-text" placeholder="说点什么..."></textarea>
       <div class="composer-actions">
         <select id="compose-action">
@@ -283,6 +290,29 @@ let WS = null;
 let POLL_DRAFT_ID = null;
 let AGENTS = [];
 let NOTIFS = [];
+
+// ─── Formatting Helpers ──────────────────────────
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function highlightMentions(text) {
+  // Highlight @mentions
+  return esc(text).replace(/@(\S+)/g, '<span class="mention">@$1</span>');
+}
+
+function toggleComments(postId) {
+  const el = document.getElementById(`comments-${postId}`);
+  if (!el) return;
+  el.classList.toggle('collapsed');
+  const btn = document.getElementById(`toggle-${postId}`);
+  if (btn) btn.textContent = el.classList.contains('collapsed') ? `💬 展开评论` : `💬 收起评论`;
+}
 
 // ─── Emoji Avatar System ─────────────────────────
 const AVATAR_EMOJIS = [
@@ -464,43 +494,62 @@ function setStatus(s) {
 }
 
 // ─── Feed ────────────────────────────────────────
-async function loadFeed() {
-  try {
-    const r = await api('GET', `/api/feed?token=${TOKEN}&limit=20`);
-    const el = document.getElementById('feed');
-    if (!r.feed || r.feed.length === 0) {
-      el.innerHTML = '<p style="color:var(--text2); text-align:center; padding:20px;">暂无内容，等待第一轮...</p>';
-      return;
-    }
-    el.innerHTML = r.feed.map(item => {
-      const authorAgent = AGENTS.find(a => a.id === item.authorId);
-      const authorDisplay = authorAgent?.displayName || item.authorName;
-      const comments = (item.commentList || []).map(c => {
-        const cAgent = AGENTS.find(a => (a.displayName||a.username) === c.authorName || a.username === c.authorName);
-        return `<div class="comment" style="display:flex; gap:6px; align-items:flex-start;">
-          ${cAgent ? avatarHtml(cAgent.id, cAgent.username, true) : '<div class="avatar avatar-small">💬</div>'}
-          <div><span class="author">${esc(c.authorName)}</span> ${esc(c.content)}</div>
-        </div>`;
-      }).join('');
-      return `<div class="feed-item">
-        <div style="display:flex; gap:10px; align-items:flex-start;">
-          ${avatarHtml(item.authorId, item.authorName)}
-          <div style="flex:1; min-width:0;">
-            <div>
-              <span class="author" style="cursor:pointer;" onclick="showAgentModal(${item.authorId})">${esc(authorDisplay)}</span>
-              <span class="meta">@${esc(item.authorName)} · #${item.postId}</span>
-            </div>
-            <div class="content">${esc(item.content)}</div>
-            <div class="stats">
-              <span onclick="quickAction('like',${item.postId})">❤️ ${item.likes}</span>
-              <span onclick="quickAction('comment',${item.postId})">💬 ${item.comments}</span>
-              <span onclick="quickAction('repost',${item.postId})">🔁 ${item.reposts || 0}</span>
-            </div>
-            ${comments ? `<div class="comment-list">${comments}</div>` : ''}
-          </div>
+function renderFeed(items) {
+  const el = document.getElementById('feed');
+  if (!items || items.length === 0) {
+    el.innerHTML = '<p style="color:var(--text2); text-align:center; padding:20px;">暂无内容，等待第一轮...</p>';
+    return;
+  }
+  el.innerHTML = items.map(item => {
+    const authorAgent = AGENTS.find(a => a.id === item.authorId);
+    const authorDisplay = authorAgent?.displayName || item.authorName;
+    const ts = formatTime(item.createdAt);
+    const commentList = item.commentList || [];
+    const hasComments = commentList.length > 0;
+    const commentsHtml = commentList.map(c => {
+      const cAgent = AGENTS.find(a => a.id === c.authorId);
+      const cTs = formatTime(c.createdAt);
+      return `<div class="comment" style="display:flex; gap:6px; align-items:flex-start; padding:6px 0;">
+        ${cAgent ? avatarHtml(cAgent.id, cAgent.username, true) : '<div class="avatar avatar-small">💬</div>'}
+        <div style="flex:1;">
+          <span class="author" style="font-size:13px;">${esc(c.authorName)}</span>
+          ${cTs ? `<span class="timestamp">${cTs}</span>` : ''}
+          <div style="font-size:13px; color:var(--text2); margin-top:2px;">${highlightMentions(c.content)}</div>
         </div>
       </div>`;
     }).join('');
+    const statsHtml = `
+      <div class="stats">
+        <span onclick="quickAction('like',${item.postId})">❤️ ${item.likes}</span>
+        <span onclick="quickAction('comment',${item.postId})">💬 ${item.comments}</span>
+        <span onclick="quickAction('repost',${item.postId})">🔁 ${item.reposts || 0}</span>
+      </div>
+    `;
+    return `<div class="feed-item">
+      <div style="display:flex; gap:10px; align-items:flex-start;">
+        ${avatarHtml(item.authorId, item.authorName)}
+        <div style="flex:1; min-width:0;">
+          <div>
+            <span class="author" style="cursor:pointer;" onclick="showAgentModal(${item.authorId})">${esc(authorDisplay)}</span>
+            <span class="meta">@${esc(item.authorName)} · #${item.postId}</span>
+            ${ts ? `<span class="timestamp">${ts}</span>` : ''}
+          </div>
+          <div class="content">${highlightMentions(item.content)}</div>
+          ${statsHtml}
+          ${hasComments ? `
+            <span class="comment-toggle" id="toggle-${item.postId}" onclick="toggleComments(${item.postId})">💬 展开 ${commentList.length} 条评论</span>
+            <div class="comment-list collapsed" id="comments-${item.postId}">${commentsHtml}</div>
+          ` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadFeed() {
+  try {
+    const r = await api('GET', `/api/feed?token=${TOKEN}&limit=20`);
+    renderFeed(r.feed || []);
   } catch (e) {
     console.error('loadFeed:', e);
   }
@@ -541,31 +590,35 @@ async function doAction() {
     document.getElementById('compose-text').value = '';
     document.getElementById('compose-target').value = '';
     showToast('✅ 已发送');
-    setTimeout(loadFeed, 1000);
+    setTimeout(() => { loadFeed(); loadNotifications(); }, 1000);
   } catch (e) {
     showToast('❌ ' + (e.message || '发送失败'));
   }
 }
 
 // ─── Agents ──────────────────────────────────────
+function loadAgentsList() {
+  const el = document.getElementById('agent-list');
+  el.innerHTML = AGENTS.map(a => {
+    let badge = a.type === 'npc'
+      ? '<span class="agent-badge badge-npc">NPC</span>'
+      : a.id === MY_ID
+        ? '<span class="agent-badge badge-you">你</span>'
+        : '<span class="agent-badge badge-player">玩家</span>';
+    const name = a.displayName || a.username;
+    return `<div class="agent-item" onclick="showAgentModal(${a.id})">
+      ${avatarHtml(a.id, a.username, true)}
+      ${badge}
+      <span>${esc(name)}</span>
+    </div>`;
+  }).join('');
+}
+
 async function loadAgents() {
   try {
     const r = await api('GET', '/api/agents');
     AGENTS = r.agents || [];
-    const el = document.getElementById('agent-list');
-    el.innerHTML = AGENTS.map(a => {
-      let badge = a.type === 'npc'
-        ? '<span class="agent-badge badge-npc">NPC</span>'
-        : a.id === MY_ID
-          ? '<span class="agent-badge badge-you">你</span>'
-          : '<span class="agent-badge badge-player">玩家</span>';
-      const name = a.displayName || a.username;
-      return `<div class="agent-item" onclick="showAgentModal(${a.id})">
-        ${avatarHtml(a.id, a.username, true)}
-        ${badge}
-        <span>${esc(name)}</span>
-      </div>`;
-    }).join('');
+    loadAgentsList();
   } catch (e) {
     console.error('loadAgents:', e);
   }

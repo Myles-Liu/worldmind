@@ -31,6 +31,15 @@ export class OasisPlatformAdapter implements PlatformAdapter {
       content: r.content,
       likes: r.num_likes,
       comments: r.num_comments,
+      reposts: r.num_reposts ?? 0,
+      createdAt: r.created_at,
+      commentList: (r.commentList ?? []).map((c: any) => ({
+        commentId: c.comment_id,
+        authorId: c.commenter_id,
+        authorName: c.author_name,
+        content: c.content,
+        createdAt: c.created_at,
+      })),
     }));
   }
 

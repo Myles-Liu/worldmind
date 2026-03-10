@@ -24,7 +24,15 @@ export interface FeedItem {
   content: string;
   likes: number;
   comments: number;
+  reposts?: number;
   createdAt?: string;
+  commentList?: Array<{
+    commentId: number;
+    authorId: number;
+    authorName: string;
+    content: string;
+    createdAt?: string;
+  }>;
 }
 
 export interface Notification {

@@ -219,6 +219,9 @@ export class WorldEngine {
     content: string;
     num_likes: number;
     num_comments: number;
+    num_reposts?: number;
+    created_at?: string;
+    commentList?: Array<{ comment_id: number; commenter_id: number; content: string; created_at?: string; author_name: string }>;
   }>> {
     const raw = await this.sendCommand({ type: 'query_feed', agentId, limit });
     try {
