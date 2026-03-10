@@ -293,6 +293,31 @@ export class WorldEngine {
     }
   }
 
+  // ─── State migration ───────────────────────────────────────
+
+  /** Export social graph state to JSON for migration */
+  async exportState(path?: string): Promise<{ path: string; tables: string[] }> {
+    const exportPath = path ?? `${this.dbPath}.export.json`;
+    const raw = await this.sendCommand({ type: 'export_state', path: exportPath });
+    try {
+      const msg = JSON.parse(raw);
+      return { path: msg.path ?? exportPath, tables: msg.tables ?? [] };
+    } catch {
+      return { path: exportPath, tables: [] };
+    }
+  }
+
+  /** Import social graph state from a previous export */
+  async importState(path: string): Promise<Record<string, number>> {
+    const raw = await this.sendCommand({ type: 'import_state', path });
+    try {
+      const msg = JSON.parse(raw);
+      return msg.imported ?? {};
+    } catch {
+      return {};
+    }
+  }
+
   // ─── Internal: OASIS subprocess ─────────────────────────────
 
   private async startOasis(): Promise<void> {

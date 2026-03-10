@@ -565,6 +565,134 @@ async def main():
             except Exception as e:
                 emit({"type": "error", "message": f"query_group_messages failed: {e}"})
 
+        elif cmd_type == "export_state":
+            # Export social graph state for migration
+            export_path = cmd.get("path", db_path + ".export.json")
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                export_data = {
+                    "exported_at": datetime.now().isoformat(),
+                    "db_path": db_path,
+                    "tables": {}
+                }
+                # Export all relevant tables
+                for table in ["user", "post", "comment", "like", "follow", "chat_group", "group_members", "group_messages"]:
+                    try:
+                        cursor = conn.execute(f"SELECT * FROM {table}")
+                        export_data["tables"][table] = [dict(row) for row in cursor.fetchall()]
+                    except Exception as e:
+                        log(f"[engine] export_state: skipping {table}: {e}")
+                conn.close()
+                with open(export_path, "w") as f:
+                    json.dump(export_data, f, ensure_ascii=False, indent=2, default=str)
+                emit({"type": "export_done", "path": export_path, "tables": list(export_data["tables"].keys())})
+            except Exception as e:
+                emit({"type": "error", "message": f"export_state failed: {e}"})
+
+        elif cmd_type == "import_state":
+            # Import social graph from a previous export (posts, comments, likes, follows)
+            # User table is NOT imported — agents are re-created from CSV
+            import_path = cmd.get("path")
+            if not import_path or not os.path.exists(import_path):
+                emit({"type": "error", "message": f"import file not found: {import_path}"})
+                continue
+            try:
+                with open(import_path) as f:
+                    import_data = json.load(f)
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                imported = {}
+                # Import posts (skip if post_id already exists)
+                if "post" in import_data.get("tables", {}):
+                    count = 0
+                    for row in import_data["tables"]["post"]:
+                        try:
+                            cursor.execute(
+                                "INSERT OR IGNORE INTO post (post_id, user_id, content, num_likes, num_shares, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                                (row.get("post_id"), row.get("user_id"), row.get("content"), row.get("num_likes", 0), row.get("num_shares", 0), row.get("created_at"))
+                            )
+                            count += cursor.rowcount
+                        except: pass
+                    imported["post"] = count
+                # Import comments
+                if "comment" in import_data.get("tables", {}):
+                    count = 0
+                    for row in import_data["tables"]["comment"]:
+                        try:
+                            cursor.execute(
+                                "INSERT OR IGNORE INTO comment (comment_id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)",
+                                (row.get("comment_id"), row.get("post_id"), row.get("user_id"), row.get("content"), row.get("created_at"))
+                            )
+                            count += cursor.rowcount
+                        except: pass
+                    imported["comment"] = count
+                # Import likes
+                if "like" in import_data.get("tables", {}):
+                    count = 0
+                    for row in import_data["tables"]["like"]:
+                        try:
+                            cursor.execute(
+                                "INSERT OR IGNORE INTO `like` (user_id, post_id, created_at) VALUES (?, ?, ?)",
+                                (row.get("user_id"), row.get("post_id"), row.get("created_at"))
+                            )
+                            count += cursor.rowcount
+                        except: pass
+                    imported["like"] = count
+                # Import follows
+                if "follow" in import_data.get("tables", {}):
+                    count = 0
+                    for row in import_data["tables"]["follow"]:
+                        try:
+                            cursor.execute(
+                                "INSERT OR IGNORE INTO follow (follower_id, followee_id, created_at) VALUES (?, ?, ?)",
+                                (row.get("follower_id"), row.get("followee_id"), row.get("created_at"))
+                            )
+                            count += cursor.rowcount
+                        except: pass
+                    imported["follow"] = count
+                # Import groups
+                if "chat_group" in import_data.get("tables", {}):
+                    count = 0
+                    for row in import_data["tables"]["chat_group"]:
+                        try:
+                            cursor.execute(
+                                "INSERT OR IGNORE INTO chat_group (group_id, name, created_at) VALUES (?, ?, ?)",
+                                (row.get("group_id"), row.get("name"), row.get("created_at"))
+                            )
+                            count += cursor.rowcount
+                        except: pass
+                    imported["chat_group"] = count
+                # Import group members
+                if "group_members" in import_data.get("tables", {}):
+                    count = 0
+                    for row in import_data["tables"]["group_members"]:
+                        try:
+                            cursor.execute(
+                                "INSERT OR IGNORE INTO group_members (group_id, agent_id, joined_at) VALUES (?, ?, ?)",
+                                (row.get("group_id"), row.get("agent_id"), row.get("joined_at"))
+                            )
+                            count += cursor.rowcount
+                        except: pass
+                    imported["group_members"] = count
+                # Import group messages
+                if "group_messages" in import_data.get("tables", {}):
+                    count = 0
+                    for row in import_data["tables"]["group_messages"]:
+                        try:
+                            cursor.execute(
+                                "INSERT OR IGNORE INTO group_messages (message_id, group_id, sender_id, content, sent_at) VALUES (?, ?, ?, ?, ?)",
+                                (row.get("message_id"), row.get("group_id"), row.get("sender_id"), row.get("content"), row.get("sent_at"))
+                            )
+                            count += cursor.rowcount
+                        except: pass
+                    imported["group_messages"] = count
+                conn.commit()
+                conn.close()
+                emit({"type": "import_done", "path": import_path, "imported": imported})
+            except Exception as e:
+                emit({"type": "error", "message": f"import_state failed: {e}"})
+
         elif cmd_type == "interview":
             # Interview: ask an agent a question
             agent_id = cmd.get("agentId", 0)

@@ -15,6 +15,7 @@ export class OasisPlatformAdapter implements PlatformAdapter {
   private engine: WorldEngine;
   private playerSlotIds: number[];
   private nextSlotIndex = 0;
+  private recycledSlots: number[] = [];
 
   constructor(engine: WorldEngine, playerSlotIds: number[] = []) {
     this.engine = engine;
@@ -77,13 +78,38 @@ export class OasisPlatformAdapter implements PlatformAdapter {
   }
 
   async registerPlayer(name: string, _persona?: { role: string; personality: string }): Promise<number> {
-    // Use pre-allocated player slot IDs that are registered in OASIS DB
+    // First try recycled slots, then pre-allocated
+    if (this.recycledSlots.length > 0) {
+      return this.recycledSlots.pop()!;
+    }
     if (this.nextSlotIndex >= this.playerSlotIds.length) {
-      throw new Error(`No player slots available (max ${this.playerSlotIds.length})`);
+      throw new Error(`No player slots available (max ${this.playerSlotIds.length}). Restart with more --player-slots or use --resume to expand.`);
     }
     const id = this.playerSlotIds[this.nextSlotIndex]!;
     this.nextSlotIndex++;
     return id;
+  }
+
+  /** Release a player slot back for reuse */
+  releasePlayer(playerId: number): void {
+    if (this.playerSlotIds.includes(playerId)) {
+      this.recycledSlots.push(playerId);
+    }
+  }
+
+  /** Export social graph state for migration */
+  async exportState(path?: string): Promise<{ path: string; tables: string[] }> {
+    return this.engine.exportState(path);
+  }
+
+  /** Import social graph state from a previous export */
+  async importState(path: string): Promise<Record<string, number>> {
+    return this.engine.importState(path);
+  }
+
+  /** Number of available slots (pre-allocated + recycled) */
+  get availableSlots(): number {
+    return (this.playerSlotIds.length - this.nextSlotIndex) + this.recycledSlots.length;
   }
 
   async shutdown(): Promise<void> {

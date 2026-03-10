@@ -14,7 +14,7 @@ import { OasisPlatformAdapter } from '../src/oasis-adapter.js';
 import { DirectorNpcRuntime } from '../src/director-runtime.js';
 import { loadWorld, generateProfileCSV, buildWorldContext } from '../../src/player/world-config.js';
 import type { Persona } from '../src/types.js';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
 // ─── Load env ───────────────────────────────────────────────────
@@ -40,6 +40,7 @@ const noNpcs = args.includes('--no-npcs');
 const agentCountArg = get('agents');
 const maxPlayerSlots = parseInt(get('player-slots') ?? '5');
 const playerWaitSec = parseInt(get('player-wait') ?? '30');
+const resumeDir = get('resume'); // path to previous run dir (e.g. data/social/2026-03-10-14-45-06)
 
 const print = (m: string) => process.stdout.write(m + '\n');
 
@@ -53,6 +54,18 @@ async function main() {
 
   const profileDir = join(process.cwd(), 'data/social');
   mkdirSync(profileDir, { recursive: true });
+
+  // Check for resume mode
+  let importPath: string | undefined;
+  if (resumeDir) {
+    const exportFile = join(resumeDir, 'state.export.json');
+    if (existsSync(exportFile)) {
+      importPath = exportFile;
+      print(`  📦 Resuming from: ${resumeDir}`);
+    } else {
+      print(`  ⚠️ Resume requested but ${exportFile} not found, starting fresh`);
+    }
+  }
 
   // Generate profile CSV with pre-allocated player slots
   // so OASIS registers them as real agents with IDs
@@ -109,6 +122,25 @@ async function main() {
   print('  Starting OASIS...');
   await engine.init();
 
+  // Import previous state if resuming
+  if (importPath) {
+    print('  Importing previous state...');
+    const imported = await engine.importState(importPath);
+    const summary = Object.entries(imported).map(([k, v]) => `${k}:${v}`).join(', ');
+    print(`  ✓ Imported: ${summary}`);
+
+    // Also copy NPC memory if available
+    if (resumeDir) {
+      const prevMemDir = join(resumeDir, 'memory');
+      const newMemDir = join(runDir, 'memory');
+      if (existsSync(prevMemDir)) {
+        const { execSync } = await import('child_process');
+        execSync(`cp -r "${prevMemDir}" "${newMemDir}"`, { timeout: 5000 });
+        print('  ✓ NPC memory restored');
+      }
+    }
+  }
+
   // Remap NPC IDs to actual OASIS agent IDs
   const agents = engine.getAgents(200);
   const npcIds: number[] = [];
@@ -158,7 +190,18 @@ async function main() {
 
   process.on('SIGINT', async () => {
     print('\nShutting down...');
+
+    // Auto-export state for future --resume
+    const exportPath = join(runDir, 'state.export.json');
+    try {
+      const result = await engine.exportState(exportPath);
+      print(`  ✓ State exported to ${result.path}`);
+    } catch (e) {
+      print(`  ⚠️ Export failed: ${e}`);
+    }
+
     await server.stop();
+    print(`\n  To resume: --resume ${runDir}`);
     process.exit(0);
   });
 }
