@@ -44,7 +44,7 @@ export class DirectorNpcRuntime implements NpcRuntime {
 
     this.memoryManager = new AgentMemoryManager({
       maxEntriesPerAgent: 50,
-      savePath: join(memoryDir, `runtime_memory.json`),
+      savePath: join(memoryDir, `memory.json`),
     });
 
     this.llm = new LLMClient({

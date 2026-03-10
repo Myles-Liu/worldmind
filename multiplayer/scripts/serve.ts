@@ -133,6 +133,7 @@ async function main() {
         baseURL: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? 'https://api.openai.com/v1',
         model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
       },
+      memoryDir: join(profileDir, `memory_${timestamp}`),
     });
   }
 

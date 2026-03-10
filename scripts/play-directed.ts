@@ -169,10 +169,10 @@ async function main() {
     personas[i]!.id = agents[i]!.id;
   }
 
-  // Initialize director
-  const memoryDir = join(process.cwd(), 'data/social/memory');
+  // Initialize director — memory file uses same timestamp as DB
+  const memoryDir = join(profileDir, `memory_${timestamp}`);
   mkdirSync(memoryDir, { recursive: true });
-  const memoryPath = join(memoryDir, `directed_${worldArg}_memory.json`);
+  const memoryPath = join(memoryDir, `memory.json`);
 
   const memoryManager = new AgentMemoryManager({
     maxEntriesPerAgent: 50,
