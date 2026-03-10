@@ -147,51 +147,61 @@ export class WorldServer {
       }
     }
 
-    // 2. NPC decisions
-    const npcDecisions: Decision[] = [];
-    if (this.npcRuntime && this.npcSessionIds.size > 0) {
-      const activeIds = [...this.npcSessionIds.entries()]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, Math.max(2, Math.floor(this.npcSessionIds.size * 0.7)));
+    // 2. NPC decisions + player wait run IN PARALLEL
+    //    Players receive round_start above and start thinking.
+    //    NPC LLM call takes ~5-15s. Player wait runs concurrently.
+    //    After both finish, we collect all actions.
 
-      if (this.npcRuntime.decideBatch) {
-        const contexts = new Map<string, { round: number; feed: FeedItem[]; notifications: Notification[] }>();
-        for (const [agentId, sessionId] of activeIds) {
-          const feed = await this.platform.queryFeed(agentId, 10);
-          const notifs = await this.platform.queryNotifications(agentId, 5);
-          contexts.set(sessionId, { round: this.round, feed, notifications: notifs });
-        }
-        const ids = activeIds.map(([, sid]) => sid);
-        const batch = await this.npcRuntime.decideBatch(ids, contexts);
-        npcDecisions.push(...batch);
-      } else {
-        for (const [agentId, sessionId] of activeIds) {
-          const feed = await this.platform.queryFeed(agentId, 10);
-          const notifs = await this.platform.queryNotifications(agentId, 5);
-          const d = await this.npcRuntime.decide(sessionId, { round: this.round, feed, notifications: notifs });
-          npcDecisions.push(d);
+    const npcPromise = (async (): Promise<Decision[]> => {
+      const decisions: Decision[] = [];
+      if (this.npcRuntime && this.npcSessionIds.size > 0) {
+        const activeIds = [...this.npcSessionIds.entries()]
+          .sort(() => Math.random() - 0.5)
+          .slice(0, Math.max(2, Math.floor(this.npcSessionIds.size * 0.7)));
+
+        if (this.npcRuntime.decideBatch) {
+          const contexts = new Map<string, { round: number; feed: FeedItem[]; notifications: Notification[] }>();
+          for (const [agentId, sessionId] of activeIds) {
+            const feed = await this.platform.queryFeed(agentId, 10);
+            const notifs = await this.platform.queryNotifications(agentId, 5);
+            contexts.set(sessionId, { round: this.round, feed, notifications: notifs });
+          }
+          const ids = activeIds.map(([, sid]) => sid);
+          const batch = await this.npcRuntime.decideBatch(ids, contexts);
+          decisions.push(...batch);
+        } else {
+          for (const [agentId, sessionId] of activeIds) {
+            const feed = await this.platform.queryFeed(agentId, 10);
+            const notifs = await this.platform.queryNotifications(agentId, 5);
+            const d = await this.npcRuntime.decide(sessionId, { round: this.round, feed, notifications: notifs });
+            decisions.push(d);
+          }
         }
       }
-    }
+      return decisions;
+    })();
 
-    // 3. Wait for player actions (give players time to think + research)
-    if (this.players.size > 0) {
-      const waitMs = this.playerWaitMs ?? 30_000;
-      const deadline = Date.now() + waitMs;
-      this.log(`  Waiting ${waitMs / 1000}s for player actions...`);
-      while (Date.now() < deadline) {
-        // Check if all players have submitted
-        let allSubmitted = true;
-        for (const [, p] of this.players) {
-          if (!p.pendingAction) { allSubmitted = false; break; }
+    const playerWaitPromise = (async () => {
+      if (this.players.size > 0) {
+        const waitMs = this.playerWaitMs;
+        const deadline = Date.now() + waitMs;
+        this.log(`  Waiting up to ${waitMs / 1000}s for player actions...`);
+        while (Date.now() < deadline) {
+          let allSubmitted = true;
+          for (const [, p] of this.players) {
+            if (!p.pendingAction) { allSubmitted = false; break; }
+          }
+          if (allSubmitted) {
+            this.log(`  All players submitted early`);
+            break;
+          }
+          await new Promise(r => setTimeout(r, 2000));
         }
-        if (allSubmitted) {
-          this.log(`  All players submitted early`);
-          break;
-        }
-        await new Promise(r => setTimeout(r, 2000));
       }
-    }
+    })();
+
+    // Wait for both NPC decisions and player actions
+    const [npcDecisions] = await Promise.all([npcPromise, playerWaitPromise]);
 
     const playerDecisions: Decision[] = [];
     for (const [, player] of this.players) {

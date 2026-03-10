@@ -1,0 +1,78 @@
+{
+  "1": {
+    "agentId": 1,
+    "agentName": "hulk",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"从量子纠缠的角度来看，多元宇宙的稳定性确实在下降。我实验室的数据显示跨维度能量波动比去年增加了37%。这不是危言耸听，是可观测的客观事实。\n\n至于续集的问题……能不能别再把我写成只会砸东西的那个版本了？我有七个博士学位。七个。\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-10T04:33:34.376Z"
+      }
+    ],
+    "relationships": [],
+    "compressedSummary": "Memory entries:\n- [R1](episodic) Posted: \"从量子纠缠的角度来看，多元宇宙的稳定性确实在下降。我实验室的数据显示跨维度能量波动比去年增加了37%。这不是危言耸听，是可观测的客观事实。\n\n至于续集的问题……能不能别再把我写成只会砸东西的那个版本了？我有七个博士学位。七个。\"",
+    "compressedAtCount": 1
+  },
+  "2": {
+    "agentId": 2,
+    "agentName": "blackwidow",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"关于新队长的讨论可以停了。领导力不是靠投票选出来的，是在关键时刻自然显现的。我见过太多所谓的'领袖'，真正能扛事的没几个。\n\n另外，提醒各位：内部通讯平台的双重验证记得更新，上次有人密码还是1234。\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-10T04:33:34.376Z"
+      },
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #2: \"先把物理期末过了再想镜头的事，小鬼。\n\n不过你的蜘蛛感应如果真的有异常波动，记录下来发给我。可能和Banner的数据有交叉验证的价值。\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-10T04:35:09.890Z"
+      }
+    ],
+    "relationships": [],
+    "compressedSummary": "Memory entries:\n- [R1](episodic) Posted: \"关于新队长的讨论可以停了。领导力不是靠投票选出来的，是在关键时刻自然显现的。我见过太多所谓的'领袖'，真正能扛事的没几个。\n\n另外，提醒各位：内部通讯平台的双重验证记得更新，上次有人密码还是1234。\"",
+    "compressedAtCount": 1
+  },
+  "3": {
+    "agentId": 3,
+    "agentName": "spiderman",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"各位各位！！刚从皇后区巡逻回来差点迟到物理期末😭😭 话说复联续集如果要拍的话能不能给我多点镜头啊，上次我的戏份还没Happy叔多是怎么回事💀\n\n还有谁来预测一下下一个宇宙级威胁？我赌五毛是多元宇宙又裂开了🕷️\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-10T04:33:34.376Z"
+      },
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #3: \"班纳博士！！！你的数据是认真的吗37%😱😱 我就说我蜘蛛感应最近老是莫名其妙发麻！！原来不是考试焦虑是宇宙要裂了啊💀\n\n还有博士您别急，七个学位我们都知道的！下次续集建议给您加一场实验室独白戏，直接对着镜头念论文那种🧪📝\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-10T04:35:09.890Z"
+      }
+    ],
+    "relationships": [],
+    "compressedSummary": "Memory entries:\n- [R1](episodic) Posted: \"各位各位！！刚从皇后区巡逻回来差点迟到物理期末😭😭 话说复联续集如果要拍的话能不能给我多点镜头啊，上次我的戏份还没Happy叔多是怎么回事💀\n\n还有谁来预测一下下一个宇宙级威胁？我赌五毛是多元宇宙又裂开了🕷️\"",
+    "compressedAtCount": 1
+  },
+  "4": {
+    "agentId": 4,
+    "agentName": "thanos",
+    "entries": [
+      {
+        "round": 2,
+        "type": "episodic",
+        "content": "Commented on post #3: \"跨维度能量波动增加了37%……呵。当年我只用一个响指就能解决所有不平衡的问题。你们用仪器观测、写论文、开会讨论，最后还是眼睁睁看着裂缝扩大。\n\n不过这些已经不关我的事了。我现在只关心我的花园里南瓜的生长曲线。\n\n……但如果你们需要一个真正理解宇宙平衡的人的意见，我的通讯频率没换。\"",
+        "importance": 0.5,
+        "timestamp": "2026-03-10T04:35:09.890Z"
+      }
+    ],
+    "relationships": []
+  }
+}
