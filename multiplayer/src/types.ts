@@ -70,6 +70,7 @@ export interface WorldState {
 /** Client → Server */
 export type ClientMessage =
   | { type: 'join'; name: string; persona?: { role: string; personality: string } }
+  | { type: 'auth'; token: string; name: string }
   | { type: 'action'; action: ActionType; content?: string; targetPostId?: number; targetUserId?: number; groupId?: number; groupName?: string; pollId?: string; optionIndex?: number }
   | { type: 'feed'; limit?: number }
   | { type: 'notifications'; limit?: number }

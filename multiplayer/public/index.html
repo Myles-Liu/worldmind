@@ -64,12 +64,32 @@ a { color: var(--accent); text-decoration: none; }
 
 /* Agent list */
 .agent-list h3 { font-size: 14px; color: var(--text2); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-.agent-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; margin-bottom: 2px; font-size: 14px; }
+.agent-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; margin-bottom: 2px; font-size: 14px; cursor: pointer; }
 .agent-item:hover { background: var(--bg); }
 .agent-badge { font-size: 11px; padding: 1px 6px; border-radius: 4px; }
 .badge-npc { background: #1f2937; color: var(--text2); }
 .badge-player { background: #0c2d1a; color: var(--green); }
 .badge-you { background: #1a1a2e; color: var(--purple); }
+
+/* Avatar */
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); }
+.avatar-small { width: 24px; height: 24px; font-size: 12px; }
+
+/* Notification panel */
+.notif-panel { max-height: 200px; overflow-y: auto; margin-top: 16px; }
+.notif-item { display: flex; gap: 8px; padding: 8px; border-radius: 6px; margin-bottom: 4px; font-size: 13px; background: var(--bg); }
+.notif-item:hover { background: var(--surface); }
+.notif-item .notif-icon { font-size: 14px; }
+.notif-item .notif-text { color: var(--text2); }
+.notif-item .notif-text strong { color: var(--text); }
+
+/* Agent detail modal */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 999; align-items: center; justify-content: center; }
+.modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 450px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.modal-header .avatar { width: 48px; height: 48px; font-size: 24px; }
+.modal-close { margin-left: auto; cursor: pointer; font-size: 20px; color: var(--text2); }
+.modal-close:hover { color: var(--text); }
 
 /* Polls */
 .poll-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
@@ -93,6 +113,34 @@ a { color: var(--accent); text-decoration: none; }
 @media (max-width: 1100px) { .right-panel { display: none; } }
 @media (max-width: 800px) { .sidebar { display: none; } .main { padding: 8px; } }
 
+/* Tabs */
+.tab-btn { opacity: 0.6; }
+.tab-btn.active { opacity: 1; border-color: var(--accent); }
+
+/* Group chat */
+.group-item { padding: 10px; border-radius: 6px; margin-bottom: 6px; background: var(--bg); cursor: pointer; }
+.group-item:hover { background: var(--surface); border: 1px solid var(--border); }
+.group-msg { padding: 4px 0; font-size: 13px; }
+.group-msg .sender { color: var(--accent); font-weight: 600; }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  #app { flex-direction: column !important; }
+  .left-panel, .right-panel { 
+    width: 100% !important; min-width: unset !important; max-width: unset !important;
+    border-right: none !important; border-left: none !important;
+    border-bottom: 1px solid var(--border);
+    max-height: 200px !important; overflow-y: auto !important;
+  }
+  .left-panel { flex-direction: row !important; flex-wrap: wrap !important; gap: 4px !important; padding: 8px !important; }
+  .left-panel h3 { display: none; }
+  .left-panel hr { display: none; }
+  .notif-panel, .events { display: none; }
+  .agent-item { padding: 4px 6px !important; font-size: 12px !important; }
+  .right-panel { max-height: 300px !important; }
+  .feed-area { padding: 12px !important; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
@@ -103,12 +151,14 @@ a { color: var(--accent); text-decoration: none; }
 
 <!-- Join Screen -->
 <div id="join-screen" class="join-panel">
-  <h2>🌍 WorldMind</h2>
-  <p style="color: var(--text2); margin-bottom: 16px">加入多人社交模拟世界</p>
-  <input id="join-name" placeholder="输入你的名字" maxlength="20" autofocus>
+  <div style="font-size:48px; margin-bottom:8px;">🌍</div>
+  <h2 style="margin:0 0 8px;">WorldMind</h2>
+  <p style="color: var(--text2); margin-bottom: 20px; line-height:1.5; max-width:300px; text-align:center;">与 AI 角色一起生活在模拟社交世界中<br>发帖、互动、投票、加入群聊</p>
+  <input id="join-name" placeholder="输入你的名字" maxlength="20" autofocus onkeydown="if(event.key==='Enter')doJoin()">
   <br>
-  <button class="btn btn-primary" onclick="doJoin()" style="width:100%">加入世界</button>
+  <button class="btn btn-primary" onclick="doJoin()" style="width:100%">🚀 加入世界</button>
   <div id="join-error" style="color: var(--red); margin-top: 8px; font-size: 13px;"></div>
+  <p style="color:var(--text2); font-size:11px; margin-top:16px; opacity:0.6;">WorldMind — 多 Agent 世界模型引擎</p>
 </div>
 
 <!-- Main App (hidden until join) -->
@@ -118,6 +168,11 @@ a { color: var(--accent); text-decoration: none; }
     <div class="agent-list">
       <h3>🧑‍🤝‍🧑 角色</h3>
       <div id="agent-list"></div>
+    </div>
+    <hr style="border-color: var(--border); margin: 16px 0;">
+    <div>
+      <h3 style="font-size:14px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">🔔 通知</h3>
+      <div id="notifications" class="notif-panel"><p style="color:var(--text2); font-size:13px;">暂无通知</p></div>
     </div>
     <hr style="border-color: var(--border); margin: 16px 0;">
     <div>
@@ -153,14 +208,36 @@ a { color: var(--accent); text-decoration: none; }
 
     <!-- Feed -->
     <div id="feed"></div>
-    <button class="btn" onclick="loadFeed()" style="width:100%; margin-top:8px;">刷新 Feed</button>
+    <div id="new-posts-banner" style="display:none; position:sticky; top:0; z-index:10; text-align:center; padding:8px; background:var(--accent); color:#000; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600; margin-bottom:8px;" onclick="loadFeed(); this.style.display='none';">
+      📢 有新帖子，点击刷新
+    </div>
+    <button class="btn" onclick="loadFeed()" style="width:100%; margin-top:8px;">🔄 刷新 Feed</button>
   </div>
 
-  <!-- Right panel: polls -->
+  <!-- Right panel: tabs (polls + groups) -->
   <div class="right-panel">
-    <h3 style="font-size:14px; color:var(--text2); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">📊 投票</h3>
-    <button class="btn btn-small" onclick="showCreatePoll()" style="margin-bottom:10px;">+ 发起投票</button>
-    <div id="polls"></div>
+    <div style="display:flex; gap:4px; margin-bottom:12px;">
+      <button class="btn btn-small tab-btn active" data-tab="polls" onclick="switchTab('polls')">📊 投票</button>
+      <button class="btn btn-small tab-btn" data-tab="groups" onclick="switchTab('groups')">💬 群聊</button>
+    </div>
+    <div id="tab-polls">
+      <button class="btn btn-small" onclick="showCreatePoll()" style="margin-bottom:10px;">+ 发起投票</button>
+      <div id="polls"></div>
+    </div>
+    <div id="tab-groups" style="display:none;">
+      <div id="group-list"></div>
+      <div id="group-chat" style="display:none; margin-top:12px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <button class="btn btn-small" onclick="closeGroupChat()">← 返回</button>
+          <span id="group-chat-name" style="font-weight:600;"></span>
+        </div>
+        <div id="group-messages" style="max-height:300px; overflow-y:auto;"></div>
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <input id="group-msg-input" placeholder="发消息..." style="flex:1; padding:6px 8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:13px;">
+          <button class="btn btn-small btn-primary" onclick="sendGroupMsg()">发送</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -178,6 +255,25 @@ a { color: var(--accent); text-decoration: none; }
   </div>
 </div>
 
+<!-- Agent Detail Modal -->
+<div id="agent-modal" class="modal-overlay" onclick="if(event.target===this)closeAgentModal()">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="avatar" id="modal-avatar"></div>
+      <div>
+        <div style="font-weight:600; font-size:16px;" id="modal-name"></div>
+        <div style="color:var(--text2); font-size:13px;" id="modal-handle"></div>
+      </div>
+      <span class="modal-close" onclick="closeAgentModal()">✕</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <span class="agent-badge" id="modal-badge"></span>
+    </div>
+    <div style="color:var(--text2); font-size:14px; line-height:1.6;" id="modal-personality"></div>
+    <div style="margin-top:16px; display:flex; gap:8px;" id="modal-actions"></div>
+  </div>
+</div>
+
 <script>
 const BASE = location.origin;
 let TOKEN = null;
@@ -186,6 +282,83 @@ let MY_NAME = null;
 let WS = null;
 let POLL_DRAFT_ID = null;
 let AGENTS = [];
+let NOTIFS = [];
+
+// ─── Emoji Avatar System ─────────────────────────
+const AVATAR_EMOJIS = [
+  '🦁','🐯','🐻','🦊','🐼','🐨','🐸','🦄','🐲','🦅',
+  '🐧','🦈','🐙','🦋','🌸','⚡','🔥','💎','🌙','🎭',
+  '🤖','👻','🎪','🌊','🍀','🎯','🎲','🪐','🌈','❄️',
+];
+const agentAvatarMap = {};
+
+function getAvatar(agentId, username) {
+  if (agentAvatarMap[agentId]) return agentAvatarMap[agentId];
+  // Hash username to pick a stable emoji
+  let hash = 0;
+  for (let i = 0; i < (username||'').length; i++) hash = ((hash << 5) - hash + username.charCodeAt(i)) | 0;
+  const emoji = AVATAR_EMOJIS[Math.abs(hash) % AVATAR_EMOJIS.length];
+  agentAvatarMap[agentId] = emoji;
+  return emoji;
+}
+
+function avatarHtml(agentId, username, small) {
+  const cls = small ? 'avatar avatar-small' : 'avatar';
+  return `<div class="${cls}">${getAvatar(agentId, username)}</div>`;
+}
+
+// ─── Agent Detail Modal ──────────────────────────
+function showAgentModal(agentId) {
+  const a = AGENTS.find(x => x.id === agentId);
+  if (!a) return;
+  document.getElementById('modal-avatar').textContent = getAvatar(a.id, a.username);
+  document.getElementById('modal-name').textContent = a.displayName || a.username;
+  document.getElementById('modal-handle').textContent = `@${a.username} · #${a.id}`;
+  const badge = document.getElementById('modal-badge');
+  if (a.id === MY_ID) { badge.className = 'agent-badge badge-you'; badge.textContent = '你'; }
+  else if (a.type === 'npc') { badge.className = 'agent-badge badge-npc'; badge.textContent = 'NPC'; }
+  else { badge.className = 'agent-badge badge-player'; badge.textContent = '玩家'; }
+  document.getElementById('modal-personality').textContent = a.personality || '暂无简介';
+
+  const actions = document.getElementById('modal-actions');
+  if (a.id !== MY_ID) {
+    actions.innerHTML = `<button class="btn btn-small" onclick="quickAction('follow',${a.id});closeAgentModal();">➕ 关注</button>`;
+  } else {
+    actions.innerHTML = '';
+  }
+  document.getElementById('agent-modal').style.display = 'flex';
+}
+
+function closeAgentModal() {
+  document.getElementById('agent-modal').style.display = 'none';
+}
+
+// ─── Notifications ───────────────────────────────
+async function loadNotifications() {
+  try {
+    const r = await api('GET', `/api/notifications?token=${TOKEN}&limit=20`);
+    const items = r.notifications || [];
+    const el = document.getElementById('notifications');
+    if (items.length === 0) {
+      el.innerHTML = '<p style="color:var(--text2); font-size:13px;">暂无通知</p>';
+      return;
+    }
+    el.innerHTML = items.map(n => {
+      let icon = '📌';
+      if (n.type === 'comment') icon = '💬';
+      else if (n.type === 'follow') icon = '👤';
+      else if (n.type === 'like') icon = '❤️';
+      else if (n.type === 'repost') icon = '🔁';
+      else if (n.type === 'mention') icon = '📣';
+      return `<div class="notif-item">
+        <span class="notif-icon">${icon}</span>
+        <span class="notif-text"><strong>${esc(n.from_agent || n.fromAgent || '')}</strong> ${esc(n.content || n.type)}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('loadNotifications:', e);
+  }
+}
 
 // ─── Join ────────────────────────────────────────
 async function doJoin() {
@@ -203,6 +376,7 @@ async function doJoin() {
     loadAgents();
     loadFeed();
     loadPolls();
+    loadNotifications();
     loadState();
     startPolling();
   } catch (e) {
@@ -219,7 +393,8 @@ function connectWS() {
   const wsUrl = `ws://${location.host}`;
   WS = new WebSocket(wsUrl);
   WS.onopen = () => {
-    WS.send(JSON.stringify({ type: 'join', name: MY_NAME }));
+    // Authenticate with existing HTTP token instead of joining again
+    WS.send(JSON.stringify({ type: 'auth', token: TOKEN, name: MY_NAME }));
     setStatus('connected');
   };
   WS.onmessage = (e) => {
@@ -242,11 +417,27 @@ function handleWSMessage(msg) {
       addEvent(`🔄 Round ${msg.round} 开始`);
       break;
     case 'round_end':
-      loadFeed();
+      // Show banner instead of auto-refresh (less jarring while reading)
+      document.getElementById('new-posts-banner').style.display = 'block';
       loadPolls();
+      loadNotifications();
+      loadAgents();
+      addEvent(`✅ Round 结束`);
       break;
     case 'event':
-      if (msg.event === 'system_broadcast') {
+      if (msg.event === 'round_start') {
+        const rd = msg.data?.round;
+        if (rd != null) document.getElementById('round-badge').textContent = `Round ${rd}`;
+        addEvent(`🔄 Round ${rd} 开始`);
+        return;
+      } else if (msg.event === 'round_end') {
+        document.getElementById('new-posts-banner').style.display = 'block';
+        loadPolls();
+        loadNotifications();
+        loadAgents();
+        addEvent(`✅ Round 结束`);
+        return;
+      } else if (msg.event === 'system_broadcast') {
         showToast(`📢 ${msg.data.message}`);
         addEvent(msg.data.message, 'broadcast');
       } else if (msg.event === 'poll_created') {
@@ -282,19 +473,32 @@ async function loadFeed() {
       return;
     }
     el.innerHTML = r.feed.map(item => {
-      const comments = (item.commentList || []).map(c =>
-        `<div class="comment"><span class="author">@${esc(c.authorName)}</span> ${esc(c.content)}</div>`
-      ).join('');
+      const authorAgent = AGENTS.find(a => a.id === item.authorId);
+      const authorDisplay = authorAgent?.displayName || item.authorName;
+      const comments = (item.commentList || []).map(c => {
+        const cAgent = AGENTS.find(a => (a.displayName||a.username) === c.authorName || a.username === c.authorName);
+        return `<div class="comment" style="display:flex; gap:6px; align-items:flex-start;">
+          ${cAgent ? avatarHtml(cAgent.id, cAgent.username, true) : '<div class="avatar avatar-small">💬</div>'}
+          <div><span class="author">${esc(c.authorName)}</span> ${esc(c.content)}</div>
+        </div>`;
+      }).join('');
       return `<div class="feed-item">
-        <span class="author">@${esc(item.authorName)}</span>
-        <span class="meta">#${item.postId}</span>
-        <div class="content">${esc(item.content)}</div>
-        <div class="stats">
-          <span onclick="quickAction('like',${item.postId})">❤️ ${item.likes}</span>
-          <span onclick="quickAction('comment',${item.postId})">💬 ${item.comments}</span>
-          <span onclick="quickAction('repost',${item.postId})">🔁 ${item.reposts || 0}</span>
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          ${avatarHtml(item.authorId, item.authorName)}
+          <div style="flex:1; min-width:0;">
+            <div>
+              <span class="author" style="cursor:pointer;" onclick="showAgentModal(${item.authorId})">${esc(authorDisplay)}</span>
+              <span class="meta">@${esc(item.authorName)} · #${item.postId}</span>
+            </div>
+            <div class="content">${esc(item.content)}</div>
+            <div class="stats">
+              <span onclick="quickAction('like',${item.postId})">❤️ ${item.likes}</span>
+              <span onclick="quickAction('comment',${item.postId})">💬 ${item.comments}</span>
+              <span onclick="quickAction('repost',${item.postId})">🔁 ${item.reposts || 0}</span>
+            </div>
+            ${comments ? `<div class="comment-list">${comments}</div>` : ''}
+          </div>
         </div>
-        ${comments ? `<div class="comment-list">${comments}</div>` : ''}
       </div>`;
     }).join('');
   } catch (e) {
@@ -302,17 +506,20 @@ async function loadFeed() {
   }
 }
 
-function quickAction(action, postId) {
+function quickAction(action, targetId) {
   if (action === 'like') {
-    api('POST', '/api/action', { token: TOKEN, action: 'like', targetPostId: postId });
+    api('POST', '/api/action', { token: TOKEN, action: 'like', targetPostId: targetId });
     showToast('❤️ 已点赞');
   } else if (action === 'comment') {
     document.getElementById('compose-action').value = 'comment';
-    document.getElementById('compose-target').value = postId;
+    document.getElementById('compose-target').value = targetId;
     document.getElementById('compose-text').focus();
   } else if (action === 'repost') {
-    api('POST', '/api/action', { token: TOKEN, action: 'repost', targetPostId: postId });
+    api('POST', '/api/action', { token: TOKEN, action: 'repost', targetPostId: targetId });
     showToast('🔁 已转发');
+  } else if (action === 'follow') {
+    api('POST', '/api/action', { token: TOKEN, action: 'follow', targetUserId: targetId });
+    showToast('➕ 已关注');
   }
 }
 
@@ -353,7 +560,11 @@ async function loadAgents() {
           ? '<span class="agent-badge badge-you">你</span>'
           : '<span class="agent-badge badge-player">玩家</span>';
       const name = a.displayName || a.username;
-      return `<div class="agent-item">${badge} <span>${esc(name)}</span> <span style="color:var(--text2); font-size:12px;">@${esc(a.username)}</span></div>`;
+      return `<div class="agent-item" onclick="showAgentModal(${a.id})">
+        ${avatarHtml(a.id, a.username, true)}
+        ${badge}
+        <span>${esc(name)}</span>
+      </div>`;
     }).join('');
   } catch (e) {
     console.error('loadAgents:', e);
@@ -462,6 +673,84 @@ async function confirmPoll() {
   }
 }
 
+// ─── Tab Switch ──────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('tab-polls').style.display = tab === 'polls' ? 'block' : 'none';
+  document.getElementById('tab-groups').style.display = tab === 'groups' ? 'block' : 'none';
+  if (tab === 'groups') loadGroups();
+}
+
+// ─── Groups ──────────────────────────────────────
+let CURRENT_GROUP = null;
+
+async function loadGroups() {
+  try {
+    const r = await api('GET', `/api/groups?token=${TOKEN}`);
+    const el = document.getElementById('group-list');
+    const groups = r.groups || [];
+    if (groups.length === 0) {
+      el.innerHTML = '<p style="color:var(--text2); font-size:13px;">暂无群聊。通过发帖创建群组吧！</p>';
+      return;
+    }
+    el.innerHTML = groups.map(g =>
+      `<div class="group-item" onclick="openGroupChat(${g.groupId}, '${esc(g.name)}')">
+        <div style="font-weight:600;">💬 ${esc(g.name)}</div>
+        <div style="font-size:12px; color:var(--text2);">ID: ${g.groupId}</div>
+      </div>`
+    ).join('');
+  } catch (e) {
+    console.error('loadGroups:', e);
+  }
+}
+
+async function openGroupChat(groupId, name) {
+  CURRENT_GROUP = groupId;
+  document.getElementById('group-list').style.display = 'none';
+  document.getElementById('group-chat').style.display = 'block';
+  document.getElementById('group-chat-name').textContent = name;
+  await loadGroupMessages(groupId);
+}
+
+function closeGroupChat() {
+  CURRENT_GROUP = null;
+  document.getElementById('group-list').style.display = 'block';
+  document.getElementById('group-chat').style.display = 'none';
+}
+
+async function loadGroupMessages(groupId) {
+  try {
+    const r = await api('GET', `/api/group/messages?groupId=${groupId}&limit=30`);
+    const el = document.getElementById('group-messages');
+    const msgs = r.messages || [];
+    if (msgs.length === 0) {
+      el.innerHTML = '<p style="color:var(--text2); font-size:13px;">暂无消息</p>';
+      return;
+    }
+    el.innerHTML = msgs.map(m =>
+      `<div class="group-msg"><span class="sender">${esc(m.sender_name)}</span>: ${esc(m.content)}</div>`
+    ).join('');
+    el.scrollTop = el.scrollHeight;
+  } catch (e) {
+    console.error('loadGroupMessages:', e);
+  }
+}
+
+async function sendGroupMsg() {
+  if (!CURRENT_GROUP) return;
+  const input = document.getElementById('group-msg-input');
+  const content = input.value.trim();
+  if (!content) return;
+  try {
+    await api('POST', '/api/action', { token: TOKEN, action: 'send_to_group', groupId: CURRENT_GROUP, content });
+    input.value = '';
+    showToast('✅ 已发送');
+    setTimeout(() => loadGroupMessages(CURRENT_GROUP), 500);
+  } catch (e) {
+    showToast('❌ ' + (e.message || '发送失败'));
+  }
+}
+
 // ─── Polling (HTTP long-poll for events) ─────────
 function startPolling() {
   setInterval(async () => {
@@ -473,8 +762,15 @@ function startPolling() {
     } catch {}
   }, 6000);
 
-  // Refresh agents periodically
+  // Refresh agents + notifications + group messages periodically
   setInterval(loadAgents, 30000);
+  setInterval(loadNotifications, 15000);
+  setInterval(() => { if (CURRENT_GROUP) loadGroupMessages(CURRENT_GROUP); }, 10000);
+
+  // Enter key for group chat input
+  document.getElementById('group-msg-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendGroupMsg();
+  });
 
   // Refresh state
   setInterval(loadState, 10000);
@@ -483,7 +779,8 @@ function startPolling() {
 async function loadState() {
   try {
     const r = await api('GET', '/api/state');
-    document.getElementById('round-badge').textContent = `Round ${r.round}`;
+    const round = r.state?.round ?? r.round;
+    if (round != null) document.getElementById('round-badge').textContent = `Round ${round}`;
   } catch {}
 }
 

@@ -146,6 +146,8 @@ export class HttpApi {
     if (path === '/api/state' && req.method === 'GET') return this.handleState(res);
     if (path === '/api/agents' && req.method === 'GET') return this.handleAgents(res);
     if (path === '/api/leave' && req.method === 'POST') return this.handleLeave(req, res);
+    if (path === '/api/groups' && req.method === 'GET') return this.handleGroups(url, res);
+    if (path === '/api/group/messages' && req.method === 'GET') return this.handleGroupMessages(url, res);
 
     return false; // Not an API route
   }
@@ -271,6 +273,31 @@ export class HttpApi {
 
   private async handleAgents(res: ServerResponse): Promise<true> {
     return this.json(res, 200, { agents: this.deps.getAgents() });
+  }
+
+  private async handleGroups(url: URL, res: ServerResponse): Promise<true> {
+    // Token optional — pass agentId 0 to get all groups
+    const token = url.searchParams.get('token');
+    const player = token ? this.players.get(token) : null;
+    const agentId = player?.id ?? 0;
+    try {
+      const result = await this.deps.platform.queryGroups(agentId);
+      return this.json(res, 200, result);
+    } catch (e: any) {
+      return this.json(res, 500, { error: e.message });
+    }
+  }
+
+  private async handleGroupMessages(url: URL, res: ServerResponse): Promise<true> {
+    const groupId = parseInt(url.searchParams.get('groupId') ?? '0');
+    const limit = parseInt(url.searchParams.get('limit') ?? '20');
+    if (!groupId) return this.json(res, 400, { error: 'groupId required' });
+    try {
+      const messages = await this.deps.platform.queryGroupMessages(groupId, limit);
+      return this.json(res, 200, { messages });
+    } catch (e: any) {
+      return this.json(res, 500, { error: e.message });
+    }
   }
 
   private async handleLeave(req: IncomingMessage, res: ServerResponse): Promise<true> {

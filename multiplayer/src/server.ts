@@ -606,6 +606,28 @@ export class WorldServer {
 
   private async handleMessage(ws: WebSocket, msg: ClientMessage) {
     switch (msg.type) {
+      case 'auth': {
+        // Authenticate WS connection with existing HTTP token (avoids double-join)
+        const httpPlayer = this.httpApi?.getPlayers().get(msg.token);
+        if (!httpPlayer) {
+          this.send(ws, { type: 'error', message: 'invalid token' });
+          return;
+        }
+        // Bind this WS to the HTTP player
+        this.players.set(ws, {
+          id: httpPlayer.id,
+          name: httpPlayer.name,
+          ws,
+          pendingAction: null,
+          joinedAt: Date.now(),
+        });
+        // Remove from HTTP players to avoid duplicate
+        this.httpApi?.getPlayers().delete(msg.token);
+        this.send(ws, { type: 'joined', playerId: httpPlayer.id, round: this.round, worldContext: this.worldContext, npcs: this.npcs });
+        this.log(`Player upgraded to WS: ${httpPlayer.name} (#${httpPlayer.id})`);
+        break;
+      }
+
       case 'join': {
         if (this.totalPlayerCount >= this.maxPlayers) {
           this.send(ws, { type: 'error', message: 'server full' });
