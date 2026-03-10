@@ -3,120 +3,74 @@
 > Created: 2026-03-10
 > Last Updated: 2026-03-10
 
-| Phase | Status | Commit |
-|-------|--------|--------|
+## Core Features
+
+| Feature | Status | Commit |
+|---------|--------|--------|
 | Phase 1: 扩展 Action | ✅ Done | `dc50e85` |
 | Phase 2: 群聊系统 | ✅ Done | `b8d8129` |
 | Phase 3: 外部工具 (OpenClaw Skill) | ✅ Done | `734cca4` |
 | Phase 4: Interview 复盘 | ✅ Done | `da3a085` |
+| HTTP REST API | ✅ Done | `c7935bf` |
+| LAN 自动发现 (Discovery) | ✅ Done | `54a2129` |
+| 客户端 Skill 打包 + GitHub Release | ✅ Done | v0.1.0 |
+| 优雅重启 + 状态迁移 (--resume) | ✅ Done | `9b319c0` |
+| Player Slot 回收复用 | ✅ Done | `9b319c0` |
 
 ---
 
-## Phase 1: 扩展 Action 集（丰富社交行为）
+## Upcoming
 
-**目标**：让 NPC 和 Player 不止发帖/评论，行为更像真人
+### 管理员角色 (Admin)
+- [ ] Admin token / password 认证
+- [ ] 控制轮次：暂停 / 恢复 / 跳过 / 手动触发
+- [ ] 踢人 / 禁言
+- [ ] 广播系统消息
+- [ ] 注入事件（inject_event / inject_news）
+- [ ] 查看所有玩家状态
+- [ ] 运行时修改参数（轮次间隔、NPC 数量等）
+- [ ] Admin HTTP API (`/api/admin/*`)
 
-### 1.1 转发 & 引用转发（Repost / Quote Post）
-- [ ] world-engine.py `directed_step` 支持 `REPOST` 和 `QUOTE_POST` action
-- [ ] AgentDirector prompt 中加入转发/引用选项
-- [ ] Decision schema 增加 `repost` / `quote` action type
-- [ ] AI Player 支持转发决策
-- **价值**：信息传播链可追踪，模拟"病毒传播"现象
+### 观众模式 (Spectator)
+- [ ] 只读连接，看 feed 不参与
+- [ ] 实时观看所有互动
+- [ ] 用于直播 / 展示场景
 
-### 1.2 关注 / 取关（Follow / Unfollow）
-- [ ] directed_step 支持 `FOLLOW` / `UNFOLLOW`
-- [ ] Agent 根据互动历史自动关注志同道合者
-- [ ] 关注关系影响 feed 推荐（OASIS 已内置推荐系统）
-- **价值**：形成社交网络拓扑，agent 不再是平面互动
+### Web UI
+- [ ] 简单前端看 feed + 发 action
+- [ ] 实时更新（WebSocket）
+- [ ] 角色头像 / 社交关系可视化
 
-### 1.3 点赞优化
-- [ ] 让 agent 自然地点赞（目前 94 评论只有 1 个赞）
-- [ ] 点赞作为轻量互动，降低"沉默轮"比例
-- **价值**：更真实的社交信号
-
-### 1.4 搜索帖子 / 用户（Search）
-- [ ] Agent 可以搜索平台内容，而不仅依赖 feed
-- [ ] 搜索结果影响决策（如"搜一下 Tony 之前说过什么"）
-- **价值**：agent 有主动获取信息的能力
-
----
-
-## Phase 2: 群聊系统（私密社交维度）
-
-**目标**：公开帖子 + 私密群聊，两条社交线并行
-
-### 2.1 群聊基础
-- [ ] world-engine.py 支持 `CREATE_GROUP` / `JOIN_GROUP` / `SEND_TO_GROUP` / `LEAVE_GROUP`
-- [ ] DirectorNpcRuntime 在 decideBatch 中输出群聊 action
-- [ ] 群消息纳入 agent memory
-
-### 2.2 群聊剧情引擎
-- [ ] World config 中定义初始群聊（如"复仇者作战指挥部"）
-- [ ] Agent 可自发建群拉人（如 Thanos 私下密谋群）
-- [ ] 群聊内容对非成员不可见，形成信息不对称
-
-### 2.3 Player 加入群聊
-- [ ] AI Player / Human Player 可通过 WebSocket 加入群聊
-- [ ] join.ts CLI 支持群聊消息收发
-- **价值**：模拟"暗线"剧情，信息不对称驱动冲突
+### 更丰富的 World Config
+- [ ] 预设群组（世界配置中定义初始群聊）
+- [ ] 预设关注关系
+- [ ] 事件脚本（X 轮后触发某事件）
+- [ ] 多世界模板（漫威、三体、office drama...）
 
 ---
 
-## Phase 3: 外部工具（Agent 搜索真实信息）
+## 技术债务
 
-**目标**：Agent 不再纯靠幻想，能引用真实世界知识
-
-### 3.1 搜索工具集成
-- [ ] 给 OASIS agent 挂 CAMEL SearchToolkit（DuckDuckGo）
-- [ ] Directed 模式下：AgentDirector 决策后，如需搜索则调用工具补充内容
-- [ ] 搜索结果注入 agent 发言（"根据 Nature 2024 论文..."）
-
-### 3.2 知识验证
-- [ ] Agent 发言前可以 fact-check 自己的内容
-- [ ] 其他 agent 可以搜索反驳（"你说的数据是错的，实际上..."）
-- **价值**：发言质量从"角色扮演幻想"升级到"有理有据的讨论"
-
----
-
-## Phase 4: Interview 复盘系统
-
-**目标**：模拟结束后，生成深度角色分析报告
-
-### 4.1 自动采访
-- [ ] 模拟结束后对每个 agent 执行 `INTERVIEW` action
-- [ ] 预设采访问题（"你为什么在第 X 轮改变了立场？""你怎么看 Tony？"）
-- [ ] 采访基于 agent 完整 memory，回答有上下文
-
-### 4.2 分析报告生成
-- [ ] 汇总所有采访 → LLM 生成"角色心理分析报告"
-- [ ] 社交关系图谱可视化（谁和谁互动最多、立场对立/一致）
-- [ ] 关键事件时间线提取
-- [ ] 信息传播路径分析
-
-### 4.3 输出格式
-- [ ] Markdown 报告
-- [ ] 可选：HTML 可视化页面
-- **价值**：把模拟从"看热闹"升级到"可分析的社会实验"
-
----
-
-## 技术债务 / 改进
-
-- [ ] tsconfig 排除 `scripts/archive/`（消除编译警告）
+- [ ] tsconfig 排除 `scripts/archive/`
 - [ ] user_name 字段为空问题（OASIS 只写 name 不写 user_name）
-- [ ] 清理 data/social/ 下的旧文件（历史遗留的平铺文件）
-- [ ] LLMAction 独立模式 vs Directed 模式对比实验
+- [ ] git history 中残留 data/social 文件（非敏感，低优先）
 
 ---
 
-## 依赖关系
+## 架构
 
 ```
-Phase 1（基础 action）
-  ↓
-Phase 2（群聊，依赖 action 扩展）
-  ↓
-Phase 3（工具，独立于群聊但丰富内容）
-  ↓
-Phase 4（复盘，依赖完整模拟数据）
+Server (serve.ts)
+  ├── OASIS Engine (Python subprocess)
+  ├── DirectorNpcRuntime (batched LLM for NPCs)
+  ├── WebSocket Server (real-time players)
+  ├── HTTP API (remote players / OpenClaw agents)
+  ├── Discovery (/api/discover)
+  └── State Migration (export/import)
+
+Client Options:
+  ├── ai-player.ts (WS, auto-discover)
+  ├── ws-bridge.ts (WS + File IPC, auto-discover)
+  ├── HTTP API (curl / any language)
+  └── worldmind-player.skill (OpenClaw agent)
 ```

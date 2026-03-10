@@ -15,5 +15,5 @@
     "noEmit": true
   },
   "include": ["src/**/*.ts", "scripts/**/*.ts"],
-  "exclude": ["node_modules", "dist", "data"]
+  "exclude": ["node_modules", "dist", "data", "scripts/archive"]
 }

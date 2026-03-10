@@ -193,6 +193,12 @@ async def main():
     agents_list = list(agent_graph.get_agents())
     log(f"[engine] {len(agents_list)} agents created")
 
+    # Fix: OASIS generate_twitter_agent_graph sets name but not user_name
+    for _, agent in agents_list:
+        ui = agent.user_info
+        if ui and not ui.user_name and ui.name:
+            ui.user_name = ui.name
+
     # Inject world-level context (language, culture, directives) into system prompt
     world_context = os.environ.get('WORLDMIND_WORLD_CONTEXT', '')
     if world_context:
