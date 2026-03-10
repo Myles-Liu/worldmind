@@ -23,6 +23,7 @@ import type {
   NpcRuntime,
 } from './types.js';
 import { HttpApi } from './http-api.js';
+import { handleDiscover } from './discovery.js';
 
 // ─── Connected Player ───────────────────────────────────────────
 
@@ -81,6 +82,8 @@ export class WorldServer {
   private round = 0;
   private playerWaitMs: number;
   private log: (msg: string) => void;
+  private startTime = Date.now();
+  private listenPort = 0;
 
   constructor(config: ServerConfig) {
     this.platform = config.platform;
@@ -126,10 +129,22 @@ export class WorldServer {
     });
 
     this.httpServer = createHttpServer(async (req, res) => {
+      // Discovery endpoint (handled before HttpApi)
+      if (req.url === '/api/discover' && req.method === 'GET') {
+        handleDiscover(req, res, {
+          worldName: this.worldContext.split('\n')[1]?.replace(/^.*"(.+)".*$/, '$1') ?? 'WorldMind',
+          port: this.listenPort,
+          getNpcs: () => this.npcs.length,
+          getPlayers: () => this.totalPlayerCount,
+          getMaxPlayers: () => this.maxPlayers,
+          getRound: () => this.round,
+        }, this.startTime);
+        return;
+      }
       const handled = await this.httpApi!.handle(req, res);
       if (!handled) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'not found', endpoints: ['/api/join', '/api/action', '/api/poll', '/api/feed', '/api/notifications', '/api/state', '/api/agents', '/api/leave'] }));
+        res.end(JSON.stringify({ error: 'not found', endpoints: ['/api/discover', '/api/join', '/api/action', '/api/poll', '/api/feed', '/api/notifications', '/api/state', '/api/agents', '/api/leave'] }));
       }
     });
 
@@ -142,6 +157,8 @@ export class WorldServer {
     });
 
     // Start listening
+    this.listenPort = port;
+    this.startTime = Date.now();
     await new Promise<void>((resolve) => {
       this.httpServer!.listen(port, host, () => resolve());
     });
