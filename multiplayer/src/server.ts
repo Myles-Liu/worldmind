@@ -93,7 +93,7 @@ export class WorldServer {
     this.log = config.onLog ?? console.log;
   }
 
-  async start(port: number): Promise<void> {
+  async start(port: number, host: string = 'localhost'): Promise<void> {
     // Spawn NPCs
     if (this.npcRuntime && this.npcs.length > 0) {
       this.log(`Spawning ${this.npcs.length} NPCs via ${this.npcRuntime.name}...`);
@@ -143,12 +143,12 @@ export class WorldServer {
 
     // Start listening
     await new Promise<void>((resolve) => {
-      this.httpServer!.listen(port, () => resolve());
+      this.httpServer!.listen(port, host, () => resolve());
     });
 
-    this.log(`🌍 WorldMind Server ws+http://0.0.0.0:${port}`);
+    this.log(`🌍 WorldMind Server ws+http://${host}:${port}`);
     this.log(`   NPCs: ${this.npcs.length} | Max players: ${this.maxPlayers}`);
-    this.log(`   HTTP API: http://0.0.0.0:${port}/api/{join,action,poll,feed,state,...}`);
+    this.log(`   HTTP API: http://${host}:${port}/api/{join,action,poll,feed,state,...}`);
 
     if (this.roundInterval > 0) {
       this.roundTimer = setInterval(() => this.runRound().catch(e =>

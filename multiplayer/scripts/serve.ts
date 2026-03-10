@@ -33,6 +33,7 @@ try {
 const args = process.argv.slice(2);
 const get = (f: string) => args.find((_, i) => args[i - 1] === `--${f}`);
 const worldArg = get('world') ?? 'cn-tech';
+const host = get('host') ?? 'localhost';
 const port = parseInt(get('port') ?? '3000');
 const roundInterval = parseInt(get('round-interval') ?? '0');
 const noNpcs = args.includes('--no-npcs');
@@ -151,8 +152,8 @@ async function main() {
     onLog: (m) => print(`  ${m}`),
   });
 
-  await server.start(port);
-  print(`\n  ✓ ws://0.0.0.0:${port}`);
+  await server.start(port, host);
+  print(`\n  ✓ ws+http://${host}:${port}`);
   print(`  Waiting for players...\n`);
 
   process.on('SIGINT', async () => {
