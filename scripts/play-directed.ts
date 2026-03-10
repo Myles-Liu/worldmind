@@ -100,14 +100,14 @@ async function main() {
 
   if (agentCountArg) worldSettings.agentCount = agentCount;
 
-  // Generate profiles
+  // Each run gets its own directory: data/social/2026-03-10-10-47-33/
   const profileDir = join(process.cwd(), 'data/social');
-  mkdirSync(profileDir, { recursive: true });
-  // Format: 2026-01-02-23-59-01
   const now = new Date();
   const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+  const runDir = join(profileDir, timestamp);
+  mkdirSync(runDir, { recursive: true });
 
-  const profilePath = join(profileDir, `directed_${timestamp}.csv`);
+  const profilePath = join(runDir, 'profiles.csv');
   const playerConfig = role === 'player' ? {
     username: playerName,
     displayName: playerName,
@@ -134,7 +134,7 @@ async function main() {
   }
 
   // Initialize engine (OASIS subprocess) — use timestamped DB
-  const dbPath = join(profileDir, `world_${timestamp}.db`);
+  const dbPath = join(runDir, 'world.db');
   const engine = new WorldEngine({
     platform: worldSettings.platform,
     agentCount: worldSettings.agentCount + (playerConfig ? 1 : 0),
@@ -170,7 +170,7 @@ async function main() {
   }
 
   // Initialize director — memory file uses same timestamp as DB
-  const memoryDir = join(profileDir, `memory_${timestamp}`);
+  const memoryDir = join(runDir, 'memory');
   mkdirSync(memoryDir, { recursive: true });
   const memoryPath = join(memoryDir, `memory.json`);
 

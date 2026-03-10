@@ -59,11 +59,13 @@ async function main() {
     profileCSV += `\nplayer_${i},"Player ${i}","A real human exploring this simulation."`;
   }
 
-  // Format: 2026-01-02-23-59-01
+  // Each run gets its own directory: data/social/2026-03-10-10-47-33/
   const now = new Date();
   const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
+  const runDir = join(profileDir, timestamp);
+  mkdirSync(runDir, { recursive: true });
 
-  const profilePath = join(profileDir, `serve_${timestamp}.csv`);
+  const profilePath = join(runDir, 'profiles.csv');
   writeFileSync(profilePath, profileCSV, 'utf-8');
 
   const worldContext = buildWorldContext(worldSettings);
@@ -83,8 +85,8 @@ async function main() {
     }
   }
 
-  // Init OASIS — use timestamped DB to avoid overwriting previous runs
-  const dbPath = join(profileDir, `world_${timestamp}.db`);
+  // Init OASIS
+  const dbPath = join(runDir, 'world.db');
   const engine = new WorldEngine({
     platform: worldSettings.platform,
     agentCount: totalAgents,
@@ -133,7 +135,7 @@ async function main() {
         baseURL: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? 'https://api.openai.com/v1',
         model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
       },
-      memoryDir: join(profileDir, `memory_${timestamp}`),
+      memoryDir: join(runDir, 'memory'),
     });
   }
 
