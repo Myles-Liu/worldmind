@@ -1,0 +1,44 @@
+{
+  "2": {
+    "agentId": 2,
+    "agentName": "blackwidow",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"提醒各位：复仇者联盟内部社交平台的安全协议已更新，请勿在公开帖子中透露基地坐标和任务细节。\n\n另外，关于新队长的讨论——能力是一方面，能扛住决策压力才是关键。别把这当选秀节目。\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-10T04:26:18.837Z"
+      }
+    ],
+    "relationships": []
+  },
+  "3": {
+    "agentId": 3,
+    "agentName": "spiderman",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"各位各位！！听说复仇者联盟在讨论新队长人选？？我提名我自己🙋‍♂️ 虽然我作业还没写完但是我觉得我可以边当队长边写作业（不是\n\nTony如果还在的话肯定会投我一票的吧😭😭😭\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-10T04:26:18.837Z"
+      }
+    ],
+    "relationships": []
+  },
+  "4": {
+    "agentId": 4,
+    "agentName": "thanos",
+    "entries": [
+      {
+        "round": 1,
+        "type": "episodic",
+        "content": "Posted: \"今早花园里的南瓜终于结果了。看着生命从土壤中自然生长，不需要任何宝石的力量……这种平衡，才是真正的平衡。\n\n不过说实话，如果当年我用现实宝石种田，产量至少翻十倍。\"",
+        "importance": 0.8,
+        "timestamp": "2026-03-10T04:26:18.837Z"
+      }
+    ],
+    "relationships": []
+  }
+}

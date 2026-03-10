@@ -38,6 +38,7 @@ const roundInterval = parseInt(get('round-interval') ?? '0');
 const noNpcs = args.includes('--no-npcs');
 const agentCountArg = get('agents');
 const maxPlayerSlots = parseInt(get('player-slots') ?? '5');
+const playerWaitSec = parseInt(get('player-wait') ?? '30');
 
 const print = (m: string) => process.stdout.write(m + '\n');
 
@@ -146,6 +147,7 @@ async function main() {
     npcRuntime,
     roundIntervalSec: roundInterval,
     maxPlayers: maxPlayerSlots,
+    playerWaitMs: playerWaitSec * 1000,
     onLog: (m) => print(`  ${m}`),
   });
 

@@ -53,6 +53,9 @@ export interface ServerConfig {
   /** Max connected players */
   maxPlayers?: number;
 
+  /** Milliseconds to wait for player actions after NPC decisions (default 30000) */
+  playerWaitMs?: number;
+
   /** Logging callback */
   onLog?: (msg: string) => void;
 }
@@ -72,6 +75,7 @@ export class WorldServer {
   private roundInterval: number;
   private roundTimer: NodeJS.Timeout | null = null;
   private round = 0;
+  private playerWaitMs: number;
   private log: (msg: string) => void;
 
   constructor(config: ServerConfig) {
@@ -80,6 +84,7 @@ export class WorldServer {
     this.worldContext = config.worldContext;
     this.npcs = config.npcs ?? [];
     this.maxPlayers = config.maxPlayers ?? 50;
+    this.playerWaitMs = config.playerWaitMs ?? 30_000;
     this.roundInterval = (config.roundIntervalSec ?? 0) * 1000;
     this.log = config.onLog ?? console.log;
   }
@@ -169,7 +174,25 @@ export class WorldServer {
       }
     }
 
-    // 3. Collect pending player actions
+    // 3. Wait for player actions (give players time to think + research)
+    if (this.players.size > 0) {
+      const waitMs = this.playerWaitMs ?? 30_000;
+      const deadline = Date.now() + waitMs;
+      this.log(`  Waiting ${waitMs / 1000}s for player actions...`);
+      while (Date.now() < deadline) {
+        // Check if all players have submitted
+        let allSubmitted = true;
+        for (const [, p] of this.players) {
+          if (!p.pendingAction) { allSubmitted = false; break; }
+        }
+        if (allSubmitted) {
+          this.log(`  All players submitted early`);
+          break;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
     const playerDecisions: Decision[] = [];
     for (const [, player] of this.players) {
       if (player.pendingAction) {
