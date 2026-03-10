@@ -339,6 +339,7 @@ export class PollSystem {
           ],
           temperature: 0.8,
           max_tokens: 200,
+          stream: false,
         }),
       });
 
