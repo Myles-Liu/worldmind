@@ -180,6 +180,8 @@ export class DirectorNpcRuntime implements NpcRuntime {
       content: d.content,
       targetPostId: d.targetPostId,
       targetUserId: d.targetUserId,
+      groupId: d.groupId,
+      groupName: d.groupName,
       reasoning: d.reasoning,
     };
   }

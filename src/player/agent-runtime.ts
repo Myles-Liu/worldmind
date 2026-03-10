@@ -50,10 +50,13 @@ export interface RoundContext {
  */
 export interface AgentDecision {
   agentId: number;
-  action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote' | 'do_nothing';
+  action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote'
+    | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'do_nothing';
   content?: string;
   targetPostId?: number;
   targetUserId?: number;
+  groupId?: number;
+  groupName?: string;
   reasoning?: string;         // optional explanation (for logging/debugging)
 }
 

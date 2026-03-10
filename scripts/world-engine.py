@@ -174,6 +174,11 @@ async def main():
         ActionType.CREATE_COMMENT,
         ActionType.FOLLOW,
         ActionType.UNFOLLOW,
+        ActionType.CREATE_GROUP,
+        ActionType.JOIN_GROUP,
+        ActionType.LEAVE_GROUP,
+        ActionType.SEND_TO_GROUP,
+        ActionType.LISTEN_FROM_GROUP,
         ActionType.DO_NOTHING,
     ]
 
@@ -425,6 +430,29 @@ async def main():
                                 "content": d.get("content", ""),
                             },
                         )
+                    elif action_type == "create_group":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.CREATE_GROUP,
+                            action_args={"group_name": d.get("groupName", "group")},
+                        )
+                    elif action_type == "join_group":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.JOIN_GROUP,
+                            action_args={"group_id": d.get("groupId", 1)},
+                        )
+                    elif action_type == "leave_group":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.LEAVE_GROUP,
+                            action_args={"group_id": d.get("groupId", 1)},
+                        )
+                    elif action_type == "send_to_group":
+                        step_actions[target_agent] = ManualAction(
+                            action_type=ActionType.SEND_TO_GROUP,
+                            action_args={
+                                "group_id": d.get("groupId", 1),
+                                "content": d.get("content", ""),
+                            },
+                        )
                     else:
                         log(f"[engine] directed_step: unknown action {action_type}")
                 except Exception as e:
@@ -495,6 +523,47 @@ async def main():
                 emit({"type": "notifications_result", "agentId": agent_id, "notifications": notifs})
             except Exception as e:
                 emit({"type": "error", "message": f"query_notifications failed: {e}"})
+
+        elif cmd_type == "query_groups":
+            # List all groups and agent's membership
+            agent_id = cmd.get("agentId", 0)
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                # All groups
+                cursor = conn.execute("SELECT group_id, name FROM chat_group")
+                all_groups = [{"groupId": row["group_id"], "name": row["name"]} for row in cursor.fetchall()]
+                # Agent's memberships
+                cursor = conn.execute(
+                    "SELECT group_id FROM group_members WHERE agent_id = ?", (agent_id,)
+                )
+                joined_ids = [row["group_id"] for row in cursor.fetchall()]
+                conn.close()
+                emit({"type": "groups_result", "agentId": agent_id, "groups": all_groups, "joined": joined_ids})
+            except Exception as e:
+                emit({"type": "error", "message": f"query_groups failed: {e}"})
+
+        elif cmd_type == "query_group_messages":
+            # Get messages from a specific group
+            group_id = cmd.get("groupId", 1)
+            limit = cmd.get("limit", 20)
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute(
+                    """SELECT m.message_id, m.sender_id, m.content, m.sent_at,
+                              COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as sender_name
+                       FROM group_messages m
+                       JOIN user u ON m.sender_id = u.user_id
+                       WHERE m.group_id = ?
+                       ORDER BY m.sent_at DESC LIMIT ?""",
+                    (group_id, limit),
+                )
+                messages = [dict(row) for row in cursor.fetchall()]
+                conn.close()
+                emit({"type": "group_messages_result", "groupId": group_id, "messages": messages})
+            except Exception as e:
+                emit({"type": "error", "message": f"query_group_messages failed: {e}"})
 
         elif cmd_type == "interview":
             # Interview: ask an agent a question

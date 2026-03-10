@@ -37,10 +37,13 @@ export interface AgentFeedItem {
 
 export interface AgentDecision {
   agentId: number;
-  action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote' | 'do_nothing';
-  content?: string;      // for post/comment/quote
+  action: 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote'
+    | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'do_nothing';
+  content?: string;      // for post/comment/quote/send_to_group
   targetPostId?: number; // for comment/like/repost/quote
   targetUserId?: number; // for follow
+  groupId?: number;      // for join_group/leave_group/send_to_group
+  groupName?: string;    // for create_group
   reasoning?: string;    // internal monologue (logged, not shown)
 }
 
@@ -162,15 +165,26 @@ For each character, you must decide their ONE action this round based on:
 - Use "repost" to share someone's post without comment (signal boost). Use "quote" to share with your own take added.
 - Use "follow" when a character finds someone genuinely interesting based on their posts — not randomly.
 
+## GROUP CHATS
+- Characters can create private group chats ("create_group"), join existing ones ("join_group"), and send messages ("send_to_group").
+- Groups are for private coordination, side conversations, or conspiracies — things characters wouldn't say publicly.
+- Don't overuse groups. Most rounds should still be public actions. Groups are for special moments:
+  - Forming alliances or plotting
+  - Sharing sensitive intel privately
+  - Having casual private banter
+- A character must be a member of a group before sending messages to it.
+
 # OUTPUT FORMAT
 
 Respond with a JSON array. Each element:
 {
   "agentId": <number>,
-  "action": "post" | "comment" | "like" | "follow" | "repost" | "quote" | "do_nothing",
-  "content": "<text for post/comment/quote — omit for like/repost/follow/do_nothing>",
+  "action": "post" | "comment" | "like" | "follow" | "repost" | "quote" | "create_group" | "join_group" | "send_to_group" | "do_nothing",
+  "content": "<text for post/comment/quote/send_to_group — omit for like/repost/follow/join_group/do_nothing>",
   "targetPostId": <number, for comment/like/repost/quote>,
   "targetUserId": <number, for follow>,
+  "groupId": <number, for join_group/send_to_group>,
+  "groupName": "<string, for create_group>",
   "reasoning": "<1 sentence internal thought>"
 }
 

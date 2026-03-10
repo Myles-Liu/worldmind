@@ -34,7 +34,8 @@ export interface Notification {
 
 // ─── Actions ────────────────────────────────────────────────────
 
-export type ActionType = 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'do_nothing';
+export type ActionType = 'post' | 'comment' | 'like' | 'follow' | 'repost' | 'quote'
+  | 'create_group' | 'join_group' | 'leave_group' | 'send_to_group' | 'do_nothing';
 
 export interface Decision {
   agentId: number;
@@ -42,6 +43,8 @@ export interface Decision {
   content?: string;
   targetPostId?: number;
   targetUserId?: number;
+  groupId?: number;
+  groupName?: string;
   reasoning?: string;
 }
 
@@ -62,9 +65,11 @@ export interface WorldState {
 /** Client → Server */
 export type ClientMessage =
   | { type: 'join'; name: string; persona?: { role: string; personality: string } }
-  | { type: 'action'; action: ActionType; content?: string; targetPostId?: number; targetUserId?: number }
+  | { type: 'action'; action: ActionType; content?: string; targetPostId?: number; targetUserId?: number; groupId?: number; groupName?: string }
   | { type: 'feed'; limit?: number }
   | { type: 'notifications'; limit?: number }
+  | { type: 'groups' }
+  | { type: 'group_messages'; groupId: number; limit?: number }
   | { type: 'state' }
   | { type: 'agents' }
   | { type: 'leave' };
@@ -94,6 +99,12 @@ export interface PlatformAdapter {
 
   /** Query notifications for an agent */
   queryNotifications(agentId: number, limit: number): Promise<Notification[]>;
+
+  /** Query groups and agent's membership */
+  queryGroups(agentId: number): Promise<{ groups: Array<{ groupId: number; name: string }>; joined: number[] }>;
+
+  /** Query messages from a specific group */
+  queryGroupMessages(groupId: number, limit?: number): Promise<Array<{ message_id: number; sender_name: string; content: string }>>;
 
   /** Execute a batch of decisions */
   executeBatch(decisions: Decision[]): Promise<{ executed: number; skipped: number }>;

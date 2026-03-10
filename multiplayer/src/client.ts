@@ -98,6 +98,8 @@ export class WorldClient {
     content?: string;
     targetPostId?: number;
     targetUserId?: number;
+    groupId?: number;
+    groupName?: string;
   }): Promise<void> {
     this.send({
       type: 'action',
@@ -105,9 +107,23 @@ export class WorldClient {
       content: params.content,
       targetPostId: params.targetPostId,
       targetUserId: params.targetUserId,
+      groupId: params.groupId,
+      groupName: params.groupName,
     });
     // Wait for ack
     await this.waitFor('action_ack', 10_000);
+  }
+
+  /** Query groups and membership */
+  async getGroups(): Promise<{ groups: Array<{ groupId: number; name: string }>; joined: number[] }> {
+    const result = await this.request('groups', { type: 'groups' }, 'groups_result');
+    return { groups: (result as any).groups ?? [], joined: (result as any).joined ?? [] };
+  }
+
+  /** Query messages from a group */
+  async getGroupMessages(groupId: number, limit = 20): Promise<Array<{ message_id: number; sender_name: string; content: string }>> {
+    const result = await this.request('group_messages', { type: 'group_messages', groupId, limit } as any, 'group_messages_result');
+    return (result as any).messages ?? [];
   }
 
   /** Get current feed */

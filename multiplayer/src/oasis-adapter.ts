@@ -42,6 +42,14 @@ export class OasisPlatformAdapter implements PlatformAdapter {
     }));
   }
 
+  async queryGroups(agentId: number): Promise<{ groups: Array<{ groupId: number; name: string }>; joined: number[] }> {
+    return this.engine.queryGroups(agentId);
+  }
+
+  async queryGroupMessages(groupId: number, limit = 20): Promise<Array<{ message_id: number; sender_name: string; content: string }>> {
+    return this.engine.queryGroupMessages(groupId, limit);
+  }
+
   async executeBatch(decisions: Decision[]): Promise<{ executed: number; skipped: number }> {
     return this.engine.directedStep(decisions);
   }

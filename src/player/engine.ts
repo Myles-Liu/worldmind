@@ -243,6 +243,37 @@ export class WorldEngine {
   }
 
   /**
+   * Query groups and agent's membership.
+   */
+  async queryGroups(agentId: number): Promise<{
+    groups: Array<{ groupId: number; name: string }>;
+    joined: number[];
+  }> {
+    const raw = await this.sendCommand({ type: 'query_groups', agentId });
+    try {
+      const msg = JSON.parse(raw);
+      return { groups: msg.groups ?? [], joined: msg.joined ?? [] };
+    } catch { return { groups: [], joined: [] }; }
+  }
+
+  /**
+   * Query messages from a specific group.
+   */
+  async queryGroupMessages(groupId: number, limit = 20): Promise<Array<{
+    message_id: number;
+    sender_id: number;
+    sender_name: string;
+    content: string;
+    sent_at: string;
+  }>> {
+    const raw = await this.sendCommand({ type: 'query_group_messages', groupId, limit });
+    try {
+      const msg = JSON.parse(raw);
+      return msg.messages ?? [];
+    } catch { return []; }
+  }
+
+  /**
    * Submit pre-decided actions for a directed step (AgentDirector mode).
    * Bypasses OASIS LLM — all decisions come from our director.
    */

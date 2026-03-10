@@ -47,10 +47,13 @@ const llm = new LLMClient({
 // ─── AI Decision ────────────────────────────────────────────────
 
 interface AIDecision {
-  action: 'post' | 'comment' | 'like' | 'repost' | 'quote' | 'follow' | 'do_nothing';
+  action: 'post' | 'comment' | 'like' | 'repost' | 'quote' | 'follow'
+    | 'create_group' | 'join_group' | 'send_to_group' | 'do_nothing';
   content?: string;
   targetPostId?: number;
   targetUserId?: number;
+  groupId?: number;
+  groupName?: string;
   reasoning: string;
 }
 
@@ -62,7 +65,7 @@ async function decide(round: number, feed: FeedItem[], notifications: Notificati
 
 规则:
 - 你看到 feed 和通知后，决定做一件事
-- 可选: post(发帖), comment(评论), like(点赞), repost(转发), quote(引用转发并评论), follow(关注用户), do_nothing(潜水)
+- 可选: post(发帖), comment(评论), like(点赞), repost(转发), quote(引用转发并评论), follow(关注用户), create_group(建群), join_group(加群), send_to_group(群聊发消息), do_nothing(潜水)
 - 发言要简洁自然（像真人发社交媒体一样，不超过100字）
 - 不要每轮都发帖，多回复/转发/点赞别人的内容
 - 如果有人回复了你或提到了你关心的话题，优先回复
@@ -70,8 +73,10 @@ async function decide(round: number, feed: FeedItem[], notifications: Notificati
 - 用 repost 无评论转发好内容，用 quote 转发并加自己的看法
 - 觉得某人有意思就 follow 他
 
+- 群聊用于私下交流，不是每轮都用。create_group需要groupName，join_group/send_to_group需要groupId
+
 输出 JSON:
-{"action":"post|comment|like|repost|quote|follow|do_nothing","content":"...","targetPostId":123,"targetUserId":456,"reasoning":"..."}`;
+{"action":"...","content":"...","targetPostId":123,"targetUserId":456,"groupId":1,"groupName":"密谋群","reasoning":"..."}`;
 
   const feedStr = feed.length > 0
     ? feed.map(f => `[#${f.postId}] @${f.authorName}: ${f.content.slice(0, 120)} (❤️${f.likes} 💬${f.comments})`).join('\n')
@@ -153,7 +158,8 @@ async function main() {
     try {
       const decision = await decide(round, feed, notifications);
       const icons: Record<string, string> = {
-        post: '📝', comment: '💬', like: '❤️', repost: '🔁', quote: '💬🔁', follow: '👤', do_nothing: '😴',
+        post: '📝', comment: '💬', like: '❤️', repost: '🔁', quote: '💬🔁', follow: '👤',
+        create_group: '🏠', join_group: '🚪', send_to_group: '📨', do_nothing: '😴',
       };
       const icon = icons[decision.action] ?? '❓';
       print(`  ${icon} ${decision.action}: ${decision.content?.slice(0, 80) ?? '(lurk)'}`);
@@ -165,6 +171,8 @@ async function main() {
           content: decision.content,
           targetPostId: decision.targetPostId,
           targetUserId: decision.targetUserId,
+          groupId: decision.groupId,
+          groupName: decision.groupName,
         });
         memory.push(`Round ${round}: ${decision.action} — ${decision.content?.slice(0, 60) ?? ''}`);
         print(`  ✓ Action submitted`);

@@ -256,6 +256,8 @@ export class WorldServer {
           content: msg.content,
           targetPostId: msg.targetPostId,
           targetUserId: msg.targetUserId,
+          groupId: msg.groupId,
+          groupName: msg.groupName,
         };
         this.send(ws, { type: 'action_ack', success: true });
 
@@ -287,6 +289,22 @@ export class WorldServer {
       case 'state':
         this.send(ws, { type: 'state_result', state: this.getState() });
         break;
+
+      case 'groups': {
+        const p = this.players.get(ws);
+        if (!p) { this.send(ws, { type: 'error', message: 'not joined' }); return; }
+        const result = await this.platform.queryGroups(p.id);
+        this.send(ws, { type: 'groups_result', ...result });
+        break;
+      }
+
+      case 'group_messages': {
+        const p = this.players.get(ws);
+        if (!p) { this.send(ws, { type: 'error', message: 'not joined' }); return; }
+        const messages = await this.platform.queryGroupMessages(msg.groupId, msg.limit ?? 20);
+        this.send(ws, { type: 'group_messages_result', groupId: msg.groupId, messages });
+        break;
+      }
 
       case 'agents': {
         const npcsWithType = this.npcs.map(n => ({ ...n, type: 'npc' as const }));
