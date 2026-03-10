@@ -16,20 +16,38 @@
 | 客户端 Skill 打包 + GitHub Release | ✅ Done | v0.1.0 |
 | 优雅重启 + 状态迁移 (--resume) | ✅ Done | `9b319c0` |
 | Player Slot 回收复用 | ✅ Done | `9b319c0` |
+| 管理员 API (Admin) | ✅ Done | `41fa178` `77a7b46` |
+| 投票系统 (Poll/Vote) | ✅ Done | `41fa178` `77a7b46` |
+
+### 管理员 API 详情
+
+| 功能 | 端点 | 状态 |
+|------|------|------|
+| Admin token 认证 | 所有 /api/admin/* | ✅ |
+| 踢人 | POST /api/admin/kick | ✅ |
+| 禁言 / 解禁 | POST /api/admin/mute, unmute | ✅ |
+| 广播系统消息 | POST /api/admin/broadcast | ✅ |
+| 暂停 / 恢复 | POST /api/admin/pause, resume | ✅ |
+| 手动触发轮次 | POST /api/admin/round | ✅ |
+| 注入事件 | POST /api/admin/inject | ✅ |
+| 查看所有玩家 | GET /api/admin/players | ✅ |
+| 修改运行参数 | POST /api/admin/config | ✅ |
+
+### 投票系统详情
+
+| 功能 | 端点 | 状态 |
+|------|------|------|
+| 创建投票 (LLM 生成选项) | POST /api/poll/create | ✅ |
+| 确认/修改选项 | POST /api/poll/confirm | ✅ |
+| 投票 | POST /api/action {vote} | ✅ |
+| 查看结果 | GET /api/poll/results | ✅ |
+| 关闭投票 | POST /api/poll/close | ✅ |
+| 自动关闭 (N 轮后) | 内置 | ✅ |
+| NPC 投票 | AgentDirector 集成 | ✅ |
 
 ---
 
 ## Upcoming
-
-### 管理员角色 (Admin)
-- [ ] Admin token / password 认证
-- [ ] 控制轮次：暂停 / 恢复 / 跳过 / 手动触发
-- [ ] 踢人 / 禁言
-- [ ] 广播系统消息
-- [ ] 注入事件（inject_event / inject_news）
-- [ ] 查看所有玩家状态
-- [ ] 运行时修改参数（轮次间隔、NPC 数量等）
-- [ ] Admin HTTP API (`/api/admin/*`)
 
 ### 观众模式 (Spectator)
 - [ ] 只读连接，看 feed 不参与
@@ -51,9 +69,9 @@
 
 ## 技术债务
 
-- [ ] tsconfig 排除 `scripts/archive/`
-- [ ] user_name 字段为空问题（OASIS 只写 name 不写 user_name）
-- [ ] git history 中残留 data/social 文件（非敏感，低优先）
+- ✅ tsconfig 排除 `scripts/archive/`
+- ✅ user_name 字段修复
+- ✅ data/social 从 git 清除
 
 ---
 
@@ -65,6 +83,8 @@ Server (serve.ts)
   ├── DirectorNpcRuntime (batched LLM for NPCs)
   ├── WebSocket Server (real-time players)
   ├── HTTP API (remote players / OpenClaw agents)
+  ├── Admin API (kick/mute/pause/inject)
+  ├── Poll System (create/vote/close, LLM options)
   ├── Discovery (/api/discover)
   └── State Migration (export/import)
 
