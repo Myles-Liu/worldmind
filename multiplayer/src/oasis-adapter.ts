@@ -79,14 +79,19 @@ export class OasisPlatformAdapter implements PlatformAdapter {
 
   async registerPlayer(name: string, _persona?: { role: string; personality: string }): Promise<number> {
     // First try recycled slots, then pre-allocated
+    let id: number;
     if (this.recycledSlots.length > 0) {
-      return this.recycledSlots.pop()!;
-    }
-    if (this.nextSlotIndex >= this.playerSlotIds.length) {
+      id = this.recycledSlots.pop()!;
+    } else if (this.nextSlotIndex >= this.playerSlotIds.length) {
       throw new Error(`No player slots available (max ${this.playerSlotIds.length}). Restart with more --player-slots or use --resume to expand.`);
+    } else {
+      id = this.playerSlotIds[this.nextSlotIndex]!;
+      this.nextSlotIndex++;
     }
-    const id = this.playerSlotIds[this.nextSlotIndex]!;
-    this.nextSlotIndex++;
+
+    // Update DB so the player's display name is correct instead of "Player N"
+    await this.engine.updateAgentName(id, name, name);
+
     return id;
   }
 

@@ -211,6 +211,7 @@ export class WorldServer {
         }));
         return [...npcsWithType, ...wsPlayers, ...httpPlayers];
       },
+      getRound: () => this.round,
       onVote: this.pollSystem
         ? (agentId, pollId, optionIndex) => this.pollSystem!.vote(agentId, pollId, optionIndex)
         : undefined,
@@ -522,7 +523,7 @@ export class WorldServer {
   private getAgentName(id: number): string {
     // NPC
     const npc = this.npcs.find(n => n.id === id);
-    if (npc) return npc.username;
+    if (npc) return npc.displayName ?? npc.username;
     // WS player
     for (const [, p] of this.players) {
       if (p.id === id) return p.name;
@@ -622,7 +623,7 @@ export class WorldServer {
           joinedAt: Date.now(),
         });
 
-        this.send(ws, { type: 'joined', playerId, worldContext: this.worldContext, npcs: this.npcs });
+        this.send(ws, { type: 'joined', playerId, round: this.round, worldContext: this.worldContext, npcs: this.npcs });
         this.log(`Player joined: ${msg.name} (#${playerId})`);
         this.broadcast(
           { type: 'event', event: 'player_joined', data: { name: msg.name, id: playerId } },

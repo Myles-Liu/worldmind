@@ -53,6 +53,8 @@ export interface HttpApiDeps {
   getState: () => WorldState;
   /** Get all agents info */
   getAgents: () => Array<Persona & { type: 'npc' | 'player' }>;
+  /** Get current round number */
+  getRound: () => number;
   /** Immediate vote handler (bypasses round queue) */
   onVote?: (agentId: number, pollId: string, optionIndex: number) => { success: boolean; error?: string };
   /** Max HTTP players */
@@ -177,6 +179,7 @@ export class HttpApi {
     return this.json(res, 200, {
       token,
       playerId,
+      round: this.deps.getRound(),
       worldContext: this.deps.getWorldContext(),
       npcs: this.deps.getNpcs(),
     });

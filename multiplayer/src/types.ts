@@ -9,7 +9,8 @@
 
 export interface Persona {
   id: number;
-  username: string;
+  username: string;       // handle (@thor)
+  displayName?: string;   // display name (雷神索尔)
   role: string;
   personality: string;
 }

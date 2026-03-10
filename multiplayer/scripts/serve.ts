@@ -73,7 +73,7 @@ async function main() {
   // so OASIS registers them as real agents with IDs
   let profileCSV = generateProfileCSV(worldSettings);
   for (let i = 0; i < maxPlayerSlots; i++) {
-    profileCSV += `\nplayer_${i},"Player ${i}","A real human exploring this simulation."`;
+    profileCSV += `\nplayer_${i},"Player ${i}","A real human exploring this simulation.","Human player"`;
   }
 
   // Each run gets its own directory: data/social/2026-03-10-10-47-33/
@@ -98,7 +98,7 @@ async function main() {
       if (!arch) continue;
       const suffix = i >= worldSettings.archetypes.length
         ? `_${Math.floor(i / worldSettings.archetypes.length) + 1}` : '';
-      npcs.push({ id: i, username: `${arch.role}${suffix}`, role: arch.role, personality: arch.personality });
+      npcs.push({ id: i, username: `${arch.role}${suffix}`, displayName: arch.description, role: arch.role, personality: arch.personality });
     }
   }
 

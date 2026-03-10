@@ -293,6 +293,18 @@ export class WorldEngine {
     }
   }
 
+  // ─── Agent name management ─────────────────────────────────
+
+  /** Update agent display name and user_name in DB */
+  async updateAgentName(agentId: number, userName: string, displayName: string): Promise<void> {
+    await this.sendCommand({
+      type: 'update_agent_name',
+      agentId,
+      userName,
+      displayName,
+    });
+  }
+
   // ─── State migration ───────────────────────────────────────
 
   /** Export social graph state to JSON for migration */

@@ -113,11 +113,20 @@ export function buildWorldContext(settings: WorldSettings): string {
  * belong in the world-level system prompt (see buildWorldContext).
  * Each agent's user_char contains ONLY their individual personality.
  */
+/**
+ * Generate agent profile CSV from a WorldSettings object.
+ *
+ * CSV columns → OASIS UserInfo → DB:
+ *   username    → UserInfo.user_name → DB user_name (handle: @thor)
+ *   name        → UserInfo.name      → DB name      (display: 雷神索尔)
+ *   description → UserInfo.description → DB bio
+ *   user_char   → UserInfo.profile    → (not in DB, used for agent personality)
+ */
 export function generateProfileCSV(
   settings: WorldSettings,
   player?: PlayerConfig,
 ): string {
-  const lines = ['username,description,user_char'];
+  const lines = ['username,name,description,user_char'];
 
   for (let i = 0; i < settings.agentCount; i++) {
     const arch = settings.archetypes[i % settings.archetypes.length];
@@ -126,14 +135,17 @@ export function generateProfileCSV(
       ? `_${Math.floor(i / settings.archetypes.length) + 1}`
       : '';
     const username = `${arch.role}${suffix}`;
+    const displayName = arch.description; // e.g. "雷神索尔"
+    // description (bio): first sentence of personality as brief intro
+    const bio = arch.personality.split(/[。！？]/)[0] + '。';
     lines.push(
-      `${username},${esc(arch.description)},${esc(arch.personality)}`,
+      `${username},${esc(displayName)},${esc(bio)},${esc(arch.personality)}`,
     );
   }
 
   if (player) {
     lines.push(
-      `${player.username},${esc(player.displayName)},${esc(player.bio)}`,
+      `${player.username},${esc(player.displayName)},${esc(player.displayName)},${esc(player.bio)}`,
     );
   }
 

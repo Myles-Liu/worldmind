@@ -193,11 +193,36 @@ async def main():
     agents_list = list(agent_graph.get_agents())
     log(f"[engine] {len(agents_list)} agents created")
 
-    # Fix: OASIS generate_twitter_agent_graph sets name but not user_name
-    for _, agent in agents_list:
+    # Fix field mapping: OASIS generate_twitter_agent_graph reads CSV as:
+    #   CSV "username" → UserInfo.name (WRONG: should be user_name)
+    #   CSV "name"     → (not read by OASIS)
+    # We need:
+    #   UserInfo.user_name = CSV username (handle: @thor)
+    #   UserInfo.name      = CSV name     (display: 雷神索尔)
+    #
+    # Since OASIS puts CSV "username" into UserInfo.name, we:
+    #   1. Copy name → user_name (that's the handle)
+    #   2. Read CSV "name" column and set it as the display name
+    import csv as _csv
+    display_names = {}
+    try:
+        with open(profile_path) as f:
+            reader = _csv.DictReader(f)
+            for i, row in enumerate(reader):
+                if "name" in row:
+                    display_names[i] = row["name"]
+    except Exception as e:
+        log(f"[engine] Warning: could not read display names from CSV: {e}")
+
+    for agent_id, agent in agents_list:
         ui = agent.user_info
-        if ui and not ui.user_name and ui.name:
-            ui.user_name = ui.name
+        if ui:
+            # user_name = handle (@thor), currently in ui.name from OASIS
+            if not ui.user_name and ui.name:
+                ui.user_name = ui.name
+            # name = display name (雷神索尔), from CSV "name" column
+            if agent_id in display_names:
+                ui.name = display_names[agent_id]
 
     # Inject world-level context (language, culture, directives) into system prompt
     world_context = os.environ.get('WORLDMIND_WORLD_CONTEXT', '')
@@ -482,7 +507,7 @@ async def main():
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute(
                     """SELECT p.post_id, p.user_id, p.content, p.num_likes, 
-                              COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as author_name,
+                              COALESCE(NULLIF(u.name, ''), u.user_name, 'agent_' || u.user_id) as author_name,
                               (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.post_id) as num_comments
                        FROM post p
                        JOIN user u ON p.user_id = u.user_id
@@ -506,7 +531,7 @@ async def main():
                 notifs = []
                 # Recent comments on agent's posts
                 cursor = conn.execute(
-                    """SELECT 'comment' as type, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as from_agent, c.content
+                    """SELECT 'comment' as type, COALESCE(NULLIF(u.name, ''), u.user_name, 'agent_' || u.user_id) as from_agent, c.content
                        FROM comment c
                        JOIN post p ON c.post_id = p.post_id
                        JOIN user u ON c.user_id = u.user_id
@@ -517,7 +542,7 @@ async def main():
                 notifs.extend([dict(row) for row in cursor.fetchall()])
                 # Recent follows
                 cursor = conn.execute(
-                    """SELECT 'follow' as type, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as from_agent, '' as content
+                    """SELECT 'follow' as type, COALESCE(NULLIF(u.name, ''), u.user_name, 'agent_' || u.user_id) as from_agent, '' as content
                        FROM follow f
                        JOIN user u ON f.follower_id = u.user_id
                        WHERE f.followee_id = ?
@@ -558,7 +583,7 @@ async def main():
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute(
                     """SELECT m.message_id, m.sender_id, m.content, m.sent_at,
-                              COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as sender_name
+                              COALESCE(NULLIF(u.name, ''), u.user_name, 'agent_' || u.user_id) as sender_name
                        FROM group_messages m
                        JOIN user u ON m.sender_id = u.user_id
                        WHERE m.group_id = ?
@@ -570,6 +595,23 @@ async def main():
                 emit({"type": "group_messages_result", "groupId": group_id, "messages": messages})
             except Exception as e:
                 emit({"type": "error", "message": f"query_group_messages failed: {e}"})
+
+        elif cmd_type == "update_agent_name":
+            # Update user_name and name in DB for a specific agent
+            agent_id = cmd.get("agentId", 0)
+            user_name = cmd.get("userName", "")
+            display_name = cmd.get("displayName", "")
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.execute(
+                    "UPDATE user SET user_name = ?, name = ? WHERE user_id = ?",
+                    (user_name, display_name, agent_id)
+                )
+                conn.commit()
+                conn.close()
+                emit({"type": "agent_name_updated", "agentId": agent_id})
+            except Exception as e:
+                emit({"type": "error", "message": f"update_agent_name failed: {e}"})
 
         elif cmd_type == "export_state":
             # Export social graph state for migration

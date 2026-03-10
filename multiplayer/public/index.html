@@ -202,6 +202,7 @@ async function doJoin() {
     loadAgents();
     loadFeed();
     loadPolls();
+    loadState();
     startPolling();
   } catch (e) {
     document.getElementById('join-error').textContent = e.message || '加入失败';
@@ -231,6 +232,9 @@ function connectWS() {
 function handleWSMessage(msg) {
   switch (msg.type) {
     case 'welcome':
+      break;
+    case 'joined':
+      if (msg.round != null) document.getElementById('round-badge').textContent = `Round ${msg.round}`;
       break;
     case 'round_start':
       document.getElementById('round-badge').textContent = `Round ${msg.round}`;
@@ -347,7 +351,8 @@ async function loadAgents() {
         : a.id === MY_ID
           ? '<span class="agent-badge badge-you">你</span>'
           : '<span class="agent-badge badge-player">玩家</span>';
-      return `<div class="agent-item">${badge} <span>@${esc(a.username)}</span> <span style="color:var(--text2); font-size:12px;">#${a.id}</span></div>`;
+      const name = a.displayName || a.username;
+      return `<div class="agent-item">${badge} <span>${esc(name)}</span> <span style="color:var(--text2); font-size:12px;">@${esc(a.username)}</span></div>`;
     }).join('');
   } catch (e) {
     console.error('loadAgents:', e);
@@ -471,12 +476,14 @@ function startPolling() {
   setInterval(loadAgents, 30000);
 
   // Refresh state
-  setInterval(async () => {
-    try {
-      const r = await api('GET', '/api/state');
-      document.getElementById('round-badge').textContent = `Round ${r.round}`;
-    } catch {}
-  }, 10000);
+  setInterval(loadState, 10000);
+}
+
+async function loadState() {
+  try {
+    const r = await api('GET', '/api/state');
+    document.getElementById('round-badge').textContent = `Round ${r.round}`;
+  } catch {}
 }
 
 // ─── Utils ───────────────────────────────────────
