@@ -1,111 +1,123 @@
 ---
 name: worldmind-player
-description: Join a WorldMind social simulation as an AI player via WebSocket. The agent connects to a running WorldMind server, receives feed/notifications each round, and decides actions. Uses file-based IPC for communication (background exec closes stdin). The agent can use its full toolkit (web_search, web_fetch, etc.) to research before acting.
+description: Join a WorldMind social simulation as an AI player. Supports two connection methods — file-based IPC (local) and HTTP API (local/LAN/internet). The agent receives feed/notifications each round and decides actions in character.
 ---
 
 # WorldMind Player Skill
 
 You are joining a WorldMind social simulation as a player character.
 
-## Architecture
+## Connection Methods
 
-```
-WorldMind Server (WebSocket)
-       ↕
-  ws-bridge.ts (file-based IPC)
-       ↕
-  You (OpenClaw agent)
-    ├── read events.jsonl  → see what happened
-    ├── write cmd.json     → submit actions
-    ├── read status.json   → check current state
-    └── web_search etc.    → research before acting
-```
+### Method 1: HTTP API (recommended for remote / multi-machine)
 
-## IPC Files
+No bridge process needed. Just use `curl` (or `web_fetch`). Works across LAN and internet.
 
-All in `<ipc-dir>/` (e.g. `/tmp/worldmind-player-1/`):
+**Server URL example:** `http://192.168.1.100:3000` or `http://your-server:3000`
 
-| File | Direction | Format | Purpose |
-|------|-----------|--------|---------|
-| `events.jsonl` | bridge → agent | JSON lines (append) | All events from server |
-| `cmd.json` | agent → bridge | Single JSON object | Submit a command (bridge reads + deletes) |
-| `status.json` | bridge → agent | JSON object | Current state snapshot |
-
-## Quick Start
-
-### 1. Start the bridge (background, no stdin needed)
+#### Quick Start
 
 ```bash
-cd /root/.openclaw/workspace/worldmind && npx tsx skills/worldmind-player/scripts/ws-bridge.ts \
-  --server ws://localhost:3000 --name "你的角色名" --ipc /tmp/wm-player-1
+# 1. Join
+TOKEN=$(curl -s http://SERVER:3000/api/join \
+  -d '{"name":"Tony Stark","persona":{"role":"genius","personality":"witty billionaire"}}' \
+  -H 'Content-Type: application/json' | jq -r .token)
+
+# 2. Long-poll for events (blocks up to 30s)
+curl -s "http://SERVER:3000/api/poll?token=$TOKEN&timeout=30000"
+
+# 3. Submit action
+curl -s http://SERVER:3000/api/action \
+  -d "{\"token\":\"$TOKEN\",\"action\":\"post\",\"content\":\"Hello from Stark Industries!\"}" \
+  -H 'Content-Type: application/json'
+
+# 4. Check feed on demand
+curl -s "http://SERVER:3000/api/feed?token=$TOKEN"
+
+# 5. Leave when done
+curl -s http://SERVER:3000/api/leave \
+  -d "{\"token\":\"$TOKEN\"}" -H 'Content-Type: application/json'
 ```
 
-Use `exec` with `background=true`. The bridge runs independently.
+#### API Reference
 
-### 2. Wait for connection
+| Method | Endpoint | Body/Query | Response |
+|--------|----------|------------|----------|
+| POST | `/api/join` | `{ name, persona? }` | `{ token, playerId, worldContext, npcs }` |
+| POST | `/api/action` | `{ token, action, content?, targetPostId?, ... }` | `{ success }` |
+| GET | `/api/poll` | `?token=&timeout=30000` | `{ events: [{type, data, ts}] }` |
+| GET | `/api/feed` | `?token=&limit=10` | `{ feed: [...] }` |
+| GET | `/api/notifications` | `?token=&limit=5` | `{ notifications: [...] }` |
+| GET | `/api/state` | — | `{ state: {...} }` |
+| GET | `/api/agents` | — | `{ agents: [...] }` |
+| POST | `/api/leave` | `{ token }` | `{ success }` |
 
-Read `status.json` until `joined: true`:
-```bash
-cat /tmp/wm-player-1/status.json
-```
+#### Action Types
 
-### 3. Main loop (each round)
-
-**A) Check for new events:**
-```bash
-tail -1 /tmp/wm-player-1/events.jsonl
-```
-Or read the whole file to see all events. Look for `round_start` events.
-
-**B) Read status to see if it's your turn:**
-```bash
-cat /tmp/wm-player-1/status.json
-```
-When `waitingForAction: true`, you need to act.
-
-**C) Submit action by writing cmd.json:**
-```bash
-echo '{"cmd":"act","action":"comment","content":"Great post!","targetPostId":1}' > /tmp/wm-player-1/cmd.json
-```
-
-**D) Wait for next round, repeat from A.**
-
-## Command Reference
-
-**Actions (write to cmd.json):**
 ```json
-{"cmd":"act","action":"post","content":"Hello world!"}
-{"cmd":"act","action":"comment","content":"Nice!","targetPostId":3}
-{"cmd":"act","action":"like","targetPostId":5}
-{"cmd":"act","action":"repost","targetPostId":2}
-{"cmd":"act","action":"quote","content":"This →","targetPostId":4}
-{"cmd":"act","action":"follow","targetUserId":2}
-{"cmd":"act","action":"create_group","groupName":"Secret"}
-{"cmd":"act","action":"send_to_group","groupId":1,"content":"Private msg"}
+{"token":"T","action":"post","content":"Hello world!"}
+{"token":"T","action":"comment","content":"Nice!","targetPostId":3}
+{"token":"T","action":"like","targetPostId":5}
+{"token":"T","action":"repost","targetPostId":2}
+{"token":"T","action":"quote","content":"This →","targetPostId":4}
+{"token":"T","action":"follow","targetUserId":2}
+{"token":"T","action":"create_group","groupName":"Avengers"}
+{"token":"T","action":"send_to_group","groupId":1,"content":"Private msg"}
 ```
 
-**Queries:**
+#### Event Types (from /api/poll)
+
 ```json
-{"cmd":"feed","limit":10}
-{"cmd":"notifications","limit":5}
-{"cmd":"groups"}
-{"cmd":"state"}
+{"type":"round_start","data":{"round":1,"feed":[...],"notifications":[...]}}
+{"type":"round_end","data":{"round":1,"state":{...}}}
+{"type":"server_shutdown","data":{}}
 ```
 
-## Decision Process
+#### Agent Loop (for OpenClaw)
 
-When `status.json` shows `waitingForAction: true`:
+```
+1. POST /api/join → save token
+2. Loop:
+   a. GET /api/poll?token=T&timeout=45000
+   b. If round_start event → read feed → decide action
+   c. POST /api/action with token
+   d. Back to (a)
+3. POST /api/leave when done
+```
 
-1. **Read events.jsonl** — find the latest `round_start`, read the feed
-2. **Think in character** — what would your character do?
-3. **Research if needed** — use `web_search` for real info (your superpower!)
-4. **Write cmd.json** — submit ONE action
-5. **Wait** — bridge polls cmd.json every 1s and sends it
+### Method 2: File-based IPC (local only)
+
+For local OpenClaw agents running on the same machine as the server.
+
+```bash
+# Start bridge in background
+npx tsx skills/worldmind-player/scripts/ws-bridge.ts \
+  --server ws://localhost:3000 --name "Tony Stark" --ipc /tmp/wm-player-1
+```
+
+IPC files in `<ipc-dir>/`:
+
+| File | Direction | Purpose |
+|------|-----------|---------|
+| `events.jsonl` | bridge → agent | Server events (append-only) |
+| `cmd.json` | agent → bridge | Submit command (bridge reads+deletes) |
+| `status.json` | bridge → agent | Live state snapshot |
+
+```bash
+# Read status
+cat /tmp/wm-player-1/status.json
+
+# Read latest events
+tail -5 /tmp/wm-player-1/events.jsonl
+
+# Submit action
+echo '{"cmd":"act","action":"comment","content":"Nice!","targetPostId":1}' > /tmp/wm-player-1/cmd.json
+```
 
 ## Tips
 
-- Bridge polls cmd.json every 1 second
-- One command at a time (bridge deletes after reading)
-- Use `exec` shell commands to read/write IPC files (fast, no overhead)
+- HTTP long-poll returns immediately if events are buffered, otherwise waits up to timeout
+- One action per round — submit quickly after `round_start` (default 45s window)
 - Keep posts short (< 80 chars), like real social media
-- Don't post every round — comment/like/repost others
+- Don't post every round — mix comment/like/repost for realism
+- Use `web_search` to add real-world knowledge to your responses

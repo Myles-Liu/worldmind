@@ -10,6 +10,7 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
+import { createServer as createHttpServer, type Server as HttpServer } from 'http';
 import type {
   Persona,
   Decision,
@@ -21,6 +22,7 @@ import type {
   PlatformAdapter,
   NpcRuntime,
 } from './types.js';
+import { HttpApi } from './http-api.js';
 
 // ─── Connected Player ───────────────────────────────────────────
 
@@ -64,6 +66,8 @@ export interface ServerConfig {
 
 export class WorldServer {
   private wss: WebSocketServer | null = null;
+  private httpServer: HttpServer | null = null;
+  private httpApi: HttpApi | null = null;
   private platform: PlatformAdapter;
   private npcRuntime: NpcRuntime | null;
   private worldContext: string;
@@ -100,16 +104,51 @@ export class WorldServer {
       this.log(`${this.npcSessionIds.size} NPCs ready.`);
     }
 
-    // Start WebSocket server
-    this.wss = new WebSocketServer({ port });
+    // Create HTTP server (handles both REST API and WebSocket upgrade)
+    this.httpApi = new HttpApi({
+      platform: this.platform,
+      registerPlayer: (name, persona) => this.platform.registerPlayer(name, persona),
+      getNpcs: () => this.npcs,
+      getWorldContext: () => this.worldContext,
+      getState: () => this.getState(),
+      getAgents: () => {
+        const npcsWithType = this.npcs.map(n => ({ ...n, type: 'npc' as const }));
+        const wsPlayers = [...this.players.values()].map(p => ({
+          id: p.id, username: p.name, role: 'player', personality: '', type: 'player' as const,
+        }));
+        const httpPlayers = [...this.httpApi!.getPlayers().values()].map(p => ({
+          id: p.id, username: p.name, role: 'player', personality: '', type: 'player' as const,
+        }));
+        return [...npcsWithType, ...wsPlayers, ...httpPlayers];
+      },
+      maxPlayers: this.maxPlayers,
+      log: this.log,
+    });
+
+    this.httpServer = createHttpServer(async (req, res) => {
+      const handled = await this.httpApi!.handle(req, res);
+      if (!handled) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not found', endpoints: ['/api/join', '/api/action', '/api/poll', '/api/feed', '/api/notifications', '/api/state', '/api/agents', '/api/leave'] }));
+      }
+    });
+
+    // WebSocket server attached to HTTP server (shared port)
+    this.wss = new WebSocketServer({ server: this.httpServer });
     this.wss.on('connection', (ws, req) => {
       const origin = req.headers.origin ?? req.socket.remoteAddress ?? 'unknown';
-      this.log(`Connection from ${origin} (${this.players.size}/${this.maxPlayers})`);
+      this.log(`Connection from ${origin} (${this.totalPlayerCount}/${this.maxPlayers})`);
       this.handleConnection(ws);
     });
 
-    this.log(`🌍 WorldMind Server ws://0.0.0.0:${port}`);
+    // Start listening
+    await new Promise<void>((resolve) => {
+      this.httpServer!.listen(port, () => resolve());
+    });
+
+    this.log(`🌍 WorldMind Server ws+http://0.0.0.0:${port}`);
     this.log(`   NPCs: ${this.npcs.length} | Max players: ${this.maxPlayers}`);
+    this.log(`   HTTP API: http://0.0.0.0:${port}/api/{join,action,poll,feed,state,...}`);
 
     if (this.roundInterval > 0) {
       this.roundTimer = setInterval(() => this.runRound().catch(e =>
@@ -126,7 +165,9 @@ export class WorldServer {
       this.send(ws, { type: 'event', event: 'server_shutdown', data: {} });
       ws.close();
     }
+    this.httpApi?.pushEvent({ type: 'server_shutdown', data: {} });
     this.wss?.close();
+    this.httpServer?.close();
     await this.platform.shutdown();
     this.log('Server stopped.');
   }
@@ -136,7 +177,7 @@ export class WorldServer {
     this.round++;
     this.log(`\n─── Round ${this.round} ───`);
 
-    // 1. Push round_start to all players with their feed
+    // 1. Push round_start to all players (WS + HTTP) with their feed
     for (const [ws, player] of this.players) {
       try {
         const feed = await this.platform.queryFeed(player.id, 10);
@@ -144,6 +185,21 @@ export class WorldServer {
         this.send(ws, { type: 'round_start', round: this.round, feed, notifications: notifs });
       } catch (e) {
         this.log(`Feed error for ${player.name}: ${e}`);
+      }
+    }
+    // HTTP players get round_start via poll
+    if (this.httpApi) {
+      for (const [, hp] of this.httpApi.getPlayers()) {
+        try {
+          const feed = await this.platform.queryFeed(hp.id, 10);
+          const notifs = await this.platform.queryNotifications(hp.id, 5);
+          this.httpApi.pushEventToPlayer(hp.id, {
+            type: 'round_start',
+            data: { round: this.round, feed, notifications: notifs },
+          });
+        } catch (e) {
+          this.log(`[HTTP] Feed error for ${hp.name}: ${e}`);
+        }
       }
     }
 
@@ -182,14 +238,20 @@ export class WorldServer {
     })();
 
     const playerWaitPromise = (async () => {
-      if (this.players.size > 0) {
+      const totalPlayers = this.totalPlayerCount;
+      if (totalPlayers > 0) {
         const waitMs = this.playerWaitMs;
         const deadline = Date.now() + waitMs;
-        this.log(`  Waiting up to ${waitMs / 1000}s for player actions...`);
+        this.log(`  Waiting up to ${waitMs / 1000}s for player actions (${totalPlayers} players)...`);
         while (Date.now() < deadline) {
+          // Check WS players
           let allSubmitted = true;
           for (const [, p] of this.players) {
             if (!p.pendingAction) { allSubmitted = false; break; }
+          }
+          // Check HTTP players
+          if (allSubmitted && this.httpApi && this.httpApi.playerCount > 0) {
+            if (!this.httpApi.allSubmitted()) allSubmitted = false;
           }
           if (allSubmitted) {
             this.log(`  All players submitted early`);
@@ -204,11 +266,16 @@ export class WorldServer {
     const [npcDecisions] = await Promise.all([npcPromise, playerWaitPromise]);
 
     const playerDecisions: Decision[] = [];
+    // WS players
     for (const [, player] of this.players) {
       if (player.pendingAction) {
         playerDecisions.push(player.pendingAction);
         player.pendingAction = null;
       }
+    }
+    // HTTP players
+    if (this.httpApi) {
+      playerDecisions.push(...this.httpApi.collectActions());
     }
 
     // 4. Execute all
@@ -222,11 +289,15 @@ export class WorldServer {
     for (const [ws] of this.players) {
       this.send(ws, { type: 'round_end', round: this.round, state });
     }
+    // HTTP players
+    this.httpApi?.pushEvent({ type: 'round_end', data: { round: this.round, state } });
 
-    this.log(`Round ${this.round}: ${npcDecisions.length} NPC + ${playerDecisions.length} player actions`);
+    const httpCount = this.httpApi?.playerCount ?? 0;
+    this.log(`Round ${this.round}: ${npcDecisions.length} NPC + ${playerDecisions.length} player actions (${this.players.size} WS + ${httpCount} HTTP)`);
   }
 
   get playerCount(): number { return this.players.size; }
+  get totalPlayerCount(): number { return this.players.size + (this.httpApi?.playerCount ?? 0); }
 
   // ─── Connection handling ──────────────────────────────────────
 
@@ -255,7 +326,7 @@ export class WorldServer {
   private async handleMessage(ws: WebSocket, msg: ClientMessage) {
     switch (msg.type) {
       case 'join': {
-        if (this.players.size >= this.maxPlayers) {
+        if (this.totalPlayerCount >= this.maxPlayers) {
           this.send(ws, { type: 'error', message: 'server full' });
           ws.close();
           return;
@@ -341,10 +412,13 @@ export class WorldServer {
 
       case 'agents': {
         const npcsWithType = this.npcs.map(n => ({ ...n, type: 'npc' as const }));
-        const playersWithType = [...this.players.values()].map(p => ({
+        const wsPlayers = [...this.players.values()].map(p => ({
           id: p.id, username: p.name, role: 'player', personality: '', type: 'player' as const,
         }));
-        this.send(ws, { type: 'agents_result', agents: [...npcsWithType, ...playersWithType] });
+        const httpPlayers = [...(this.httpApi?.getPlayers().values() ?? [])].map(p => ({
+          id: p.id, username: p.name, role: 'player', personality: '', type: 'player' as const,
+        }));
+        this.send(ws, { type: 'agents_result', agents: [...npcsWithType, ...wsPlayers, ...httpPlayers] });
         break;
       }
 
@@ -359,7 +433,7 @@ export class WorldServer {
 
   private getState(): WorldState {
     const s = this.platform.getState();
-    return { ...s, round: this.round, totalPlayers: this.players.size };
+    return { ...s, round: this.round, totalPlayers: this.totalPlayerCount };
   }
 
   private send(ws: WebSocket, msg: ServerMessage) {
