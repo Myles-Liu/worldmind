@@ -7,7 +7,7 @@
 |-------|--------|--------|
 | Phase 1: 扩展 Action | ✅ Done | `dc50e85` |
 | Phase 2: 群聊系统 | ✅ Done | `b8d8129` |
-| Phase 3: 外部工具 | 🔲 Planned | — |
+| Phase 3: 外部工具 (OpenClaw Skill) | ✅ Done | `734cca4` |
 | Phase 4: Interview 复盘 | ✅ Done | `da3a085` |
 
 ---
