@@ -207,6 +207,9 @@ export class WorldServer {
         }));
         return [...npcsWithType, ...wsPlayers, ...httpPlayers];
       },
+      onVote: this.pollSystem
+        ? (agentId, pollId, optionIndex) => this.pollSystem!.vote(agentId, pollId, optionIndex)
+        : undefined,
       maxPlayers: this.maxPlayers,
       log: this.log,
     });

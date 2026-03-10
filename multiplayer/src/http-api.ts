@@ -53,6 +53,8 @@ export interface HttpApiDeps {
   getState: () => WorldState;
   /** Get all agents info */
   getAgents: () => Array<Persona & { type: 'npc' | 'player' }>;
+  /** Immediate vote handler (bypasses round queue) */
+  onVote?: (agentId: number, pollId: string, optionIndex: number) => { success: boolean; error?: string };
   /** Max HTTP players */
   maxPlayers: number;
   /** Log */
@@ -184,6 +186,13 @@ export class HttpApi {
     const body = await readBody(req);
     const player = this.getPlayerFromBody(body, res);
     if (!player) return true;
+
+    // Vote actions are handled immediately (not queued)
+    if (body.action === 'vote' && body.pollId != null && this.deps.onVote) {
+      const result = this.deps.onVote(player.id, body.pollId, body.optionIndex ?? 0);
+      this.deps.log(`[HTTP] Vote from ${player.name}: poll=${body.pollId} option=${body.optionIndex}`);
+      return this.json(res, 200, result);
+    }
 
     player.pendingAction = {
       agentId: player.id,
