@@ -176,6 +176,23 @@ async function main() {
       }
     }
 
+    // Show trace summary
+    header('📋 Action Summary');
+    const traces = engine.getTrace(50);
+    const actionCounts = new Map<string, number>();
+    for (const t of traces) {
+      actionCounts.set(t.action, (actionCounts.get(t.action) ?? 0) + 1);
+    }
+    for (const [action, count] of [...actionCounts.entries()].sort((a, b) => b[1] - a[1])) {
+      print(`  ${action}: ${count}`);
+    }
+
+    // Export world state
+    try {
+      const exported = await engine.exportState(join(runDir, 'export.json'));
+      success(`World state exported to ${exported.path}`);
+    } catch { info('Export skipped (engine shutting down)'); }
+
     const posts = engine.getFeed(20);
     if (posts.length > 0) {
       header('📰 Recent Posts');
@@ -205,6 +222,9 @@ async function main() {
   print(`  ${c.bold}feed${c.reset}             — View feed`);
   print(`  ${c.bold}agents${c.reset}           — List agents`);
   print(`  ${c.bold}groups${c.reset}           — List groups and messages`);
+  print(`  ${c.bold}graph${c.reset}            — Show follow graph`);
+  print(`  ${c.bold}trace${c.reset} [N]        — Show recent actions (default 20)`);
+  print(`  ${c.bold}export${c.reset}           — Export world state to JSON`);
   print(`  ${c.bold}status${c.reset}           — World overview`);
   print(`  ${c.bold}post${c.reset} <text>      — Post as player (if player mode)`);
   print(`  ${c.bold}quit${c.reset}             — Exit`);
@@ -280,6 +300,46 @@ async function main() {
             }
             print('');
           }
+          break;
+        }
+        case 'graph': {
+          const follows = engine.getFollowGraph();
+          header('🔗 Follow Graph');
+          if (follows.length === 0) { info('No follow relationships.'); break; }
+          // Group by follower
+          const byFollower = new Map<string, string[]>();
+          for (const f of follows) {
+            if (!byFollower.has(f.follower)) byFollower.set(f.follower, []);
+            byFollower.get(f.follower)!.push(f.followee);
+          }
+          for (const [follower, followees] of byFollower) {
+            print(`  ${c.bold}@${follower}${c.reset} → ${followees.map(f => `@${f}`).join(', ')}`);
+          }
+          print('');
+          break;
+        }
+        case 'trace': {
+          const limit = parseInt(text) || 20;
+          const traces = engine.getTrace(limit);
+          header(`📋 Recent Actions (last ${limit})`);
+          if (traces.length === 0) { info('No actions recorded.'); break; }
+          for (const t of traces) {
+            const icon = t.action === 'create_post' ? '📝'
+              : t.action === 'create_comment' ? '💬'
+              : t.action === 'like_post' ? '❤️'
+              : t.action === 'quote_post' ? '🔄'
+              : t.action === 'repost' ? '🔁'
+              : t.action === 'follow' ? '👤'
+              : t.action.includes('group') ? '👥'
+              : '🔸';
+            print(`  ${icon} ${c.bold}@${t.agent}${c.reset} ${t.action} ${c.dim}${t.info}${c.reset}`);
+          }
+          print('');
+          break;
+        }
+        case 'export': {
+          const exported = await engine.exportState(join(runDir, 'export.json'));
+          success(`Exported to ${exported.path}`);
           break;
         }
         case 'status': {

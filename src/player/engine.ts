@@ -716,6 +716,43 @@ export class WorldEngine {
     } catch { return []; }
   }
 
+  /** Query follow graph: who follows whom */
+  getFollowGraph(): Array<{ follower: string; followee: string }> {
+    try {
+      const db = this.openDb();
+      const rows = JSON.parse(db.query(
+        `SELECT COALESCE(NULLIF(u1.user_name, ''), u1.name) as follower,
+                COALESCE(NULLIF(u2.user_name, ''), u2.name) as followee
+         FROM follow f
+         JOIN user u1 ON f.follower_id = u1.user_id
+         JOIN user u2 ON f.followee_id = u2.user_id
+         ORDER BY follower, followee`
+      ));
+      return rows.map((r: any) => ({ follower: r.follower, followee: r.followee }));
+    } catch { return []; }
+  }
+
+  /** Query recent trace entries (agent actions log) */
+  getTrace(limit = 50): Array<{ agent: string; action: string; info: string; time: string }> {
+    try {
+      const db = this.openDb();
+      const rows = JSON.parse(db.query(
+        `SELECT COALESCE(NULLIF(u.user_name, ''), u.name) as agent, t.action, t.info, t.created_at
+         FROM trace t
+         JOIN user u ON t.user_id = u.user_id
+         WHERE t.action NOT IN ('sign_up', 'refresh')
+         ORDER BY t.created_at DESC
+         LIMIT ${limit}`
+      ));
+      return rows.map((r: any) => ({
+        agent: r.agent,
+        action: r.action,
+        info: (r.info ?? '').slice(0, 60),
+        time: r.created_at ?? '',
+      }));
+    } catch { return []; }
+  }
+
   private isAdminAction(action: Action): boolean {
     return [
       'inject_event', 'inject_news', 'kill_agent', 'spawn_agent',
