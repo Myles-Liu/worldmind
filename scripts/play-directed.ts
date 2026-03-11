@@ -167,7 +167,14 @@ async function main() {
       header('📰 Recent Posts');
       for (const p of posts) {
         print(`  ${c.bold}@${p.authorName}${c.reset}`);
-        print(`  ${p.content.slice(0, 100)}${p.content.length > 100 ? '...' : ''}`);
+        print(`  ${p.content}`);
+        // Fetch comments for this post
+        const full = engine.getPost(p.id);
+        if (full && full.comments.length > 0) {
+          for (const cm of full.comments) {
+            print(`     └─ @${cm.authorName}: ${cm.content.slice(0, 80)}`);
+          }
+        }
         print(`  ${c.dim}❤️ ${p.likes}  💬 ${p.comments}${c.reset}\n`);
       }
     }
@@ -226,6 +233,13 @@ async function main() {
               : `${c.bold}@${p.authorName}${c.reset}`;
             print(`  #${p.id} ${author}`);
             print(`  ${p.content}`);
+            // Fetch and show comments
+            const full = engine.getPost(p.id);
+            if (full && full.comments.length > 0) {
+              for (const cm of full.comments) {
+                print(`     └─ @${cm.authorName}: ${cm.content}`);
+              }
+            }
             print(`  ${c.dim}❤️ ${p.likes}  💬 ${p.comments}  🔄 ${p.reposts}${c.reset}\n`);
           }
           break;

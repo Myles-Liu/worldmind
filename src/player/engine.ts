@@ -540,19 +540,29 @@ export class WorldEngine {
     try {
       const db = this.openDb();
       const rows = JSON.parse(db.query(
-        `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, p.content, p.num_likes, p.num_shares, p.created_at FROM post p LEFT JOIN user u ON p.user_id = u.user_id ORDER BY p.post_id DESC LIMIT ${limit}`
+        `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, 
+                p.content, p.quote_content, p.original_post_id,
+                p.num_likes, p.num_shares, p.created_at,
+                (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.post_id) as num_comments
+         FROM post p LEFT JOIN user u ON p.user_id = u.user_id ORDER BY p.post_id DESC LIMIT ${limit}`
       ));
-      return rows.map((r: any) => ({
-        id: r.post_id,
-        authorId: r.user_id,
-        authorName: r.display_name ?? r.user_name ?? `agent_${r.user_id}`,
-        content: r.content ?? '',
-        likes: r.num_likes ?? 0,
-        comments: 0,
-        reposts: r.num_shares ?? 0,
-        createdAt: r.created_at ?? '',
-        isPlayer: r.user_id === this.playerId,
-      }));
+      return rows.map((r: any) => {
+        // For quote posts, show quote_content (the agent's commentary) not the original
+        const content = r.quote_content 
+          ? `${r.content}\n\n💬 ${r.quote_content}` 
+          : (r.content ?? '');
+        return {
+          id: r.post_id,
+          authorId: r.user_id,
+          authorName: r.display_name ?? r.user_name ?? `agent_${r.user_id}`,
+          content,
+          likes: r.num_likes ?? 0,
+          comments: r.num_comments ?? 0,
+          reposts: r.num_shares ?? 0,
+          createdAt: r.created_at ?? '',
+          isPlayer: r.user_id === this.playerId,
+        };
+      });
     } catch { return []; }
   }
 
@@ -560,13 +570,19 @@ export class WorldEngine {
     try {
       const db = this.openDb();
       const rows = JSON.parse(db.query(
-        `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, p.content, p.num_likes, p.num_shares, p.created_at FROM post p LEFT JOIN user u ON p.user_id = u.user_id WHERE p.post_id = ${postId}`
+        `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, 
+                p.content, p.quote_content, p.original_post_id, p.num_likes, p.num_shares, p.created_at 
+         FROM post p LEFT JOIN user u ON p.user_id = u.user_id WHERE p.post_id = ${postId}`
       ));
       if (!rows[0]) return null;
       const r = rows[0];
+      const comments = this.queryCommentsByPost(r.post_id);
+      const content = r.quote_content 
+        ? `${r.content}\n\n💬 ${r.quote_content}` 
+        : (r.content ?? '');
       return {
         id: r.post_id, authorId: r.user_id, authorName: r.display_name ?? r.user_name ?? `agent_${r.user_id}`,
-        content: r.content ?? '', likes: r.num_likes ?? 0, comments: 0,
+        content, likes: r.num_likes ?? 0, comments: comments.length,
         reposts: r.num_shares ?? 0, createdAt: r.created_at ?? '', isPlayer: r.user_id === this.playerId,
       };
     } catch { return null; }
