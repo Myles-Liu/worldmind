@@ -175,6 +175,8 @@ export class WorldEngine {
         totalComments: stats.comments,
         totalLikes: stats.likes,
         totalFollows: stats.follows,
+        totalGroups: stats.groups,
+        totalGroupMessages: stats.groupMessages,
         player: this.playerId != null ? {
           id: this.playerId,
           followers: this.queryCount(db, 'follow', 'followee_id', this.playerId),
@@ -526,6 +528,8 @@ export class WorldEngine {
       comments: parse('SELECT COUNT(*) FROM comment'),
       likes: parse('SELECT COUNT(*) FROM like'),
       follows: parse('SELECT COUNT(*) FROM follow'),
+      groups: parse('SELECT COUNT(*) FROM chat_group'),
+      groupMessages: parse('SELECT COUNT(*) FROM group_messages'),
     };
   }
 
@@ -659,6 +663,30 @@ export class WorldEngine {
         notifs.push({ type: 'comment', fromAgent: c.user_name ?? `agent_${c.user_id}`, content: c.content?.slice(0, 80) ?? '', timestamp: '' });
       }
       return notifs;
+    } catch { return []; }
+  }
+
+  /** Query all groups with their messages */
+  getGroups(): Array<{ id: number; name: string; messages: Array<{ sender: string; content: string }> }> {
+    try {
+      const db = this.openDb();
+      const groups = JSON.parse(db.query(
+        `SELECT group_id, name FROM chat_group ORDER BY group_id`
+      ));
+      return groups.map((g: any) => {
+        const msgs = JSON.parse(db.query(
+          `SELECT gm.content, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || gm.sender_id) as sender
+           FROM group_messages gm
+           LEFT JOIN user u ON gm.sender_id = u.user_id
+           WHERE gm.group_id = ${g.group_id}
+           ORDER BY gm.message_id`
+        ));
+        return {
+          id: g.group_id,
+          name: g.name,
+          messages: msgs.map((m: any) => ({ sender: m.sender, content: m.content })),
+        };
+      });
     } catch { return []; }
   }
 

@@ -161,6 +161,20 @@ async function main() {
     print(`  Comments: ${finalState.totalComments}`);
     print(`  Likes: ${finalState.totalLikes}`);
     print(`  Follows: ${finalState.totalFollows}`);
+    print(`  Groups: ${finalState.totalGroups}`);
+    print(`  Group Messages: ${finalState.totalGroupMessages}`);
+
+    // Show groups
+    if (finalState.totalGroups > 0) {
+      header('💬 Groups');
+      const groups = engine.getGroups();
+      for (const g of groups) {
+        print(`  ${c.bold}${g.name}${c.reset} (${g.messages.length} messages)`);
+        for (const m of g.messages) {
+          print(`    └─ @${m.sender}: ${m.content.slice(0, 60)}`);
+        }
+      }
+    }
 
     const posts = engine.getFeed(20);
     if (posts.length > 0) {
@@ -190,6 +204,7 @@ async function main() {
   print(`  ${c.bold}step${c.reset} [N]         — Run N rounds (default 1)`);
   print(`  ${c.bold}feed${c.reset}             — View feed`);
   print(`  ${c.bold}agents${c.reset}           — List agents`);
+  print(`  ${c.bold}groups${c.reset}           — List groups and messages`);
   print(`  ${c.bold}status${c.reset}           — World overview`);
   print(`  ${c.bold}post${c.reset} <text>      — Post as player (if player mode)`);
   print(`  ${c.bold}quit${c.reset}             — Exit`);
@@ -252,6 +267,19 @@ async function main() {
             print(`  #${a.id} @${a.username}${tag} — ${a.bio.slice(0, 60)}`);
           }
           print('');
+          break;
+        }
+        case 'groups': {
+          const groups = engine.getGroups();
+          header('💬 Groups');
+          if (groups.length === 0) { info('No groups yet.'); break; }
+          for (const g of groups) {
+            print(`  ${c.bold}${g.name}${c.reset} (${g.messages.length} messages)`);
+            for (const m of g.messages) {
+              print(`    └─ @${m.sender}: ${m.content}`);
+            }
+            print('');
+          }
           break;
         }
         case 'status': {

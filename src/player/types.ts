@@ -59,6 +59,8 @@ export interface WorldState {
   totalComments: number;
   totalLikes: number;
   totalFollows: number;
+  totalGroups: number;
+  totalGroupMessages: number;
   // Player-specific (only when role=player)
   player?: {
     id: number;

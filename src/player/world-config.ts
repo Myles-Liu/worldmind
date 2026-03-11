@@ -29,6 +29,14 @@ export interface AgentArchetype {
   role: string;
   description: string;
   personality: string;
+  /** Key experiences that shape this character */
+  experiences?: string[];
+  /** Relationships with other characters: { "thor": "战友但觉得他太浮夸" } */
+  relationships?: Record<string, string>;
+  /** Topics this character cares deeply about */
+  interests?: string[];
+  /** Things this character avoids or dislikes */
+  avoids?: string[];
 }
 
 // ─── Loader ─────────────────────────────────────────────────────
@@ -138,8 +146,26 @@ export function generateProfileCSV(
     const displayName = arch.description; // e.g. "雷神索尔"
     // description (bio): first sentence of personality as brief intro
     const bio = arch.personality.split(/[。！？]/)[0] + '。';
+    // Build rich user_char from all available fields
+    const charParts = [arch.personality];
+    if (arch.experiences?.length) {
+      charParts.push(`关键经历：${arch.experiences.join('；')}`);
+    }
+    if (arch.relationships && Object.keys(arch.relationships).length > 0) {
+      const rels = Object.entries(arch.relationships)
+        .map(([k, v]) => `@${k}: ${v}`)
+        .join('；');
+      charParts.push(`对其他人的看法：${rels}`);
+    }
+    if (arch.interests?.length) {
+      charParts.push(`感兴趣的话题：${arch.interests.join('、')}`);
+    }
+    if (arch.avoids?.length) {
+      charParts.push(`不喜欢/回避的话题：${arch.avoids.join('、')}`);
+    }
+    const userChar = charParts.join('\n');
     lines.push(
-      `${username},${esc(displayName)},${esc(bio)},${esc(arch.personality)}`,
+      `${username},${esc(displayName)},${esc(bio)},${esc(userChar)}`,
     );
   }
 
