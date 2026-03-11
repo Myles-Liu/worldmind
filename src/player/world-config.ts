@@ -149,19 +149,19 @@ export function generateProfileCSV(
     // Build rich user_char from all available fields
     const charParts = [arch.personality];
     if (arch.experiences?.length) {
-      charParts.push(`关键经历：${arch.experiences.join('；')}`);
+      charParts.push(`Key experiences: ${arch.experiences.join('; ')}`);
     }
     if (arch.relationships && Object.keys(arch.relationships).length > 0) {
       const rels = Object.entries(arch.relationships)
         .map(([k, v]) => `@${k}: ${v}`)
-        .join('；');
-      charParts.push(`对其他人的看法：${rels}`);
+        .join('; ');
+      charParts.push(`Impressions of others: ${rels}`);
     }
     if (arch.interests?.length) {
-      charParts.push(`感兴趣的话题：${arch.interests.join('、')}`);
+      charParts.push(`Topics of interest: ${arch.interests.join(', ')}`);
     }
     if (arch.avoids?.length) {
-      charParts.push(`不喜欢/回避的话题：${arch.avoids.join('、')}`);
+      charParts.push(`Avoids/dislikes: ${arch.avoids.join(', ')}`);
     }
     const userChar = charParts.join('\n');
     lines.push(
