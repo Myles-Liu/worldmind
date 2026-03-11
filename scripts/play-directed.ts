@@ -1,25 +1,21 @@
 #!/usr/bin/env tsx
 /**
- * WorldMind Directed Mode — "One Mind, Many Voices"
+ * WorldMind — OASIS Native Mode
  *
- * Same interactive CLI as play.ts, but OASIS agents don't use their own LLM.
- * Instead, AgentDirector makes all decisions in batched LLM calls,
- * then submits them as ManualActions to OASIS.
+ * Uses OASIS's native LLM-driven agents. No director, no batch decisions.
+ * Each agent uses its own system prompt (built from world config).
  *
  * Usage:
- *   npx tsx scripts/play-directed.ts --world cn-tech
- *   npx tsx scripts/play-directed.ts --world cn-tech --admin
- *   npx tsx scripts/play-directed.ts --world cn-tech --rounds 5
+ *   npx tsx scripts/play-directed.ts --world marvel
+ *   npx tsx scripts/play-directed.ts --world marvel --admin
+ *   npx tsx scripts/play-directed.ts --world marvel --rounds 10
  */
 
 import { WorldEngine } from '../src/player/engine.js';
-import { AgentDirector, type AgentPersona, type AgentDecision } from '../src/player/agent-director.js';
-import { AgentMemoryManager } from '../src/player/memory.js';
-import { LLMClient } from '../src/llm/client.js';
 import { loadWorld, listWorlds, generateProfileCSV, buildWorldContext } from '../src/player/world-config.js';
-import type { Role, PlayerAction, AdminAction } from '../src/player/types.js';
+import type { Role } from '../src/player/types.js';
 import { createInterface } from 'readline';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 // ─── Parse args ─────────────────────────────────────────────────
@@ -36,8 +32,8 @@ const playerName = nameArg ?? 'player';
 
 const worldArg = args.find((_, i) => args[i - 1] === '--world') ?? 'cn-tech';
 
-const autoRoundsArg = args.find((_, i) => args[i - 1] === '--rounds');
-const autoRounds = autoRoundsArg ? parseInt(autoRoundsArg) : 0;
+const roundsArg = args.find((_, i) => args[i - 1] === '--rounds');
+const rounds = roundsArg ? parseInt(roundsArg) : 0;
 
 if (worldArg === 'list') {
   const worlds = listWorlds();
@@ -79,14 +75,13 @@ function print(msg: string) { process.stdout.write(msg + '\n'); }
 function header(msg: string) { print(`\n${c.bold}${c.cyan}${msg}${c.reset}`); }
 function info(msg: string) { print(`  ${c.dim}${msg}${c.reset}`); }
 function success(msg: string) { print(`  ${c.green}✓${c.reset} ${msg}`); }
-function warn(msg: string) { print(`  ${c.yellow}⚠${c.reset} ${msg}`); }
 function error(msg: string) { print(`  ${c.red}✗${c.reset} ${msg}`); }
 
 // ─── Main ───────────────────────────────────────────────────────
 
 async function main() {
-  print(`\n${c.bold}${c.magenta}🌍 WorldMind — Directed Mode (${role})${c.reset}`);
-  print(`${c.dim}One Mind, Many Voices${c.reset}`);
+  print(`\n${c.bold}${c.magenta}🌍 WorldMind — OASIS Native${c.reset}`);
+  print(`${c.dim}Each agent thinks for itself.${c.reset}`);
   print(`${'═'.repeat(50)}`);
 
   // Load world config
@@ -100,7 +95,7 @@ async function main() {
 
   if (agentCountArg) worldSettings.agentCount = agentCount;
 
-  // Each run gets its own directory: data/social/2026-03-10-10-47-33/
+  // Each run gets its own directory
   const profileDir = join(process.cwd(), 'data/social');
   const now = new Date();
   const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}-${String(now.getSeconds()).padStart(2,'0')}`;
@@ -115,25 +110,10 @@ async function main() {
   } : undefined;
   writeFileSync(profilePath, generateProfileCSV(worldSettings, playerConfig), 'utf-8');
 
+  // Build world context (injected into each agent's system prompt by OASIS)
   const worldContext = buildWorldContext(worldSettings);
 
-  // Build personas from world settings archetypes
-  const personas: AgentPersona[] = [];
-  for (let i = 0; i < worldSettings.agentCount; i++) {
-    const arch = worldSettings.archetypes[i % worldSettings.archetypes.length];
-    if (!arch) continue;
-    const suffix = i >= worldSettings.archetypes.length
-      ? `_${Math.floor(i / worldSettings.archetypes.length) + 1}`
-      : '';
-    personas.push({
-      id: i, // will be remapped after init
-      username: `${arch.role}${suffix}`,
-      role: arch.role,
-      personality: arch.personality,
-    });
-  }
-
-  // Initialize engine (OASIS subprocess) — use timestamped DB
+  // Initialize engine (OASIS subprocess)
   const dbPath = join(runDir, 'world.db');
   const engine = new WorldEngine({
     platform: worldSettings.platform,
@@ -150,7 +130,7 @@ async function main() {
   });
 
   info(`World: ${worldSettings.name} (${worldSettings.language})`);
-  info(`Agents: ${worldSettings.agentCount} (directed mode)`);
+  info(`Agents: ${worldSettings.agentCount}`);
   info('Initializing OASIS platform...');
 
   try {
@@ -163,133 +143,31 @@ async function main() {
   const state = engine.getWorldState();
   success(`Platform ready! ${state.totalAgents} agents registered.`);
 
-  // Remap persona IDs to actual OASIS agent IDs
-  const agents = engine.getAgents(100);
-  for (let i = 0; i < personas.length && i < agents.length; i++) {
-    personas[i]!.id = agents[i]!.id;
-  }
+  // ─── Run mode ─────────────────────────────────────────────────
 
-  // Initialize director — memory file uses same timestamp as DB
-  const memoryDir = join(runDir, 'memory');
-  mkdirSync(memoryDir, { recursive: true });
-  const memoryPath = join(memoryDir, `memory.json`);
-
-  const memoryManager = new AgentMemoryManager({
-    maxEntriesPerAgent: 50,
-    savePath: memoryPath,
-  });
-
-  const llm = new LLMClient({
-    apiKey: process.env.WORLDMIND_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
-    baseURL: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? 'https://api.openai.com/v1',
-    model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
-  });
-
-  const director = new AgentDirector({
-    llm,
-    memoryManager,
-    worldContext,
-    personas,
-  });
-
-  let round = 0;
-
-  /**
-   * Run one directed round:
-   * 1. Gather feeds/notifications from OASIS for each agent
-   * 2. Director decides actions for all agents
-   * 3. Submit as ManualAction to OASIS
-   */
-  async function runDirectedRound(): Promise<AgentDecision[]> {
-    round++;
-    info(`\n─── Round ${round} ───`);
-
-    // Select active agents (randomize who acts this round, ~60-80%)
-    const activeCount = Math.max(3, Math.floor(personas.length * (0.6 + Math.random() * 0.2)));
-    const shuffled = [...personas].sort(() => Math.random() - 0.5);
-    const active = shuffled.slice(0, activeCount);
-
-    info(`${active.length}/${personas.length} agents active this round`);
-
-    // Gather context for each active agent (sequential to avoid stdout race)
-    const agentInputs = [];
-    for (const persona of active) {
-      const feedRaw = await engine.queryAgentFeed(persona.id, 8);
-      const notifsRaw = await engine.queryAgentNotifications(persona.id, 5);
-
-      const feed = feedRaw.map(f => ({
-        postId: f.post_id,
-        authorName: f.author_name,
-        content: f.content,
-        likes: f.num_likes,
-        comments: f.num_comments,
-      }));
-
-      const notifications = notifsRaw.map(n => `${n.from_agent} ${n.type}: ${n.content}`.trim());
-      const memory = memoryManager.getMemorySummary(persona.id);
-
-      agentInputs.push({ persona, feed, memory, notifications });
+  if (rounds > 0) {
+    header(`Running ${rounds} rounds (OASIS native)...`);
+    for (let i = 0; i < rounds; i++) {
+      const roundNum = i + 1;
+      info(`\n─── Round ${roundNum} ───`);
+      await engine.adminAct({ type: 'step', rounds: 1 });
     }
 
-    // Director decides
-    info('Director thinking...');
-    const decisions = await director.directRound({
-      round,
-      worldContext,
-      agents: agentInputs,
-    });
-
-    // Log decisions
-    for (const d of decisions) {
-      const persona = personas.find(p => p.id === d.agentId);
-      const name = persona?.username ?? `#${d.agentId}`;
-      const icon = d.action === 'post' ? '📝' : d.action === 'comment' ? '💬'
-        : d.action === 'like' ? '❤️' : d.action === 'follow' ? '👤' : '😴';
-      const detail = d.content ? `: ${d.content.slice(0, 60)}` : '';
-      print(`    ${icon} @${name} → ${d.action}${detail}`);
-      if (d.reasoning) print(`       ${c.dim}(${d.reasoning})${c.reset}`);
-    }
-
-    // Submit to OASIS
-    const actionDecisions = decisions.filter(d => d.action !== 'do_nothing');
-    if (actionDecisions.length > 0) {
-      const result = await engine.directedStep(actionDecisions);
-      success(`Executed ${result.executed} actions, ${result.skipped} skipped`);
-    } else {
-      info('All agents chose to lurk this round.');
-    }
-
-    // Save memory
-    memoryManager.save();
-
-    return decisions;
-  }
-
-  // ─── Auto mode (--rounds N) ─────────────────────────────────
-
-  if (autoRounds > 0) {
-    header(`Auto-running ${autoRounds} rounds...`);
-    for (let i = 0; i < autoRounds; i++) {
-      await runDirectedRound();
-    }
-
-    // Print final summary
+    // Final state
     header('Final State');
     const finalState = engine.getWorldState();
-    print(`  Rounds: ${round}`);
+    print(`  Rounds: ${rounds}`);
     print(`  Posts: ${finalState.totalPosts}`);
     print(`  Comments: ${finalState.totalComments}`);
     print(`  Likes: ${finalState.totalLikes}`);
     print(`  Follows: ${finalState.totalFollows}`);
-    print('');
 
-    // Show all posts
     const posts = engine.getFeed(20);
     if (posts.length > 0) {
-      header('📰 All Posts');
+      header('📰 Recent Posts');
       for (const p of posts) {
         print(`  ${c.bold}@${p.authorName}${c.reset}`);
-        print(`  ${p.content}`);
+        print(`  ${p.content.slice(0, 100)}${p.content.length > 100 ? '...' : ''}`);
         print(`  ${c.dim}❤️ ${p.likes}  💬 ${p.comments}${c.reset}\n`);
       }
     }
@@ -302,19 +180,20 @@ async function main() {
 
   print('');
   header('Commands');
-  print(`  ${c.bold}step${c.reset} [N]           — Run N directed rounds (default 1)`);
-  print(`  ${c.bold}post${c.reset} <text>        — Post as player (if player mode)`);
-  print(`  ${c.bold}feed${c.reset}               — View feed`);
-  print(`  ${c.bold}agents${c.reset}             — List agents`);
-  print(`  ${c.bold}status${c.reset}             — World overview`);
-  print(`  ${c.bold}memory${c.reset} <agent_id>  — View agent's memory`);
-  print(`  ${c.bold}quit${c.reset}               — Exit`);
+  print(`  ${c.bold}step${c.reset} [N]         — Run N rounds (default 1)`);
+  print(`  ${c.bold}feed${c.reset}             — View feed`);
+  print(`  ${c.bold}agents${c.reset}           — List agents`);
+  print(`  ${c.bold}status${c.reset}           — World overview`);
+  print(`  ${c.bold}post${c.reset} <text>      — Post as player (if player mode)`);
+  print(`  ${c.bold}quit${c.reset}             — Exit`);
   print('');
+
+  let round = 0;
 
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: `${c.magenta}director>${c.reset} `,
+    prompt: `${c.magenta}worldmind>${c.reset} `,
   });
 
   rl.prompt();
@@ -331,22 +210,16 @@ async function main() {
         case 'step': {
           const n = parseInt(text) || 1;
           for (let i = 0; i < n; i++) {
-            await runDirectedRound();
+            round++;
+            info(`\n─── Round ${round} ───`);
+            await engine.adminAct({ type: 'step', rounds: 1 });
           }
-          break;
-        }
-        case 'post': {
-          if (!text) { warn('Usage: post <text>'); break; }
-          if (!playerConfig) { warn('No player in admin mode.'); break; }
-          await engine.playerAct({ type: 'post', content: text });
-          success('Posted! Running agent reactions...');
-          await runDirectedRound();
           break;
         }
         case 'feed': {
           const posts = engine.getFeed(15);
           header('📰 Feed');
-          if (posts.length === 0) { info('No posts yet. Run "step" first.'); break; }
+          if (posts.length === 0) { info('No posts yet.'); break; }
           for (const p of posts) {
             const author = p.isPlayer
               ? `${c.bold}${c.green}@${p.authorName} (you)${c.reset}`
@@ -371,7 +244,7 @@ async function main() {
           const s = engine.getWorldState();
           header('🌍 World Status');
           print(`  Round: ${round}`);
-          print(`  Agents: ${s.totalAgents} (${personas.length} directed)`);
+          print(`  Agents: ${s.totalAgents}`);
           print(`  Posts: ${s.totalPosts}`);
           print(`  Comments: ${s.totalComments}`);
           print(`  Likes: ${s.totalLikes}`);
@@ -379,25 +252,21 @@ async function main() {
           print('');
           break;
         }
-        case 'memory': {
-          const agentId = parseInt(text);
-          if (isNaN(agentId)) { warn('Usage: memory <agent_id>'); break; }
-          const mem = memoryManager.getMemorySummary(agentId);
-          const persona = personas.find(p => p.id === agentId);
-          header(`🧠 Memory: @${persona?.username ?? agentId}`);
-          print(mem || '  (no memory yet)');
-          print('');
+        case 'post': {
+          if (!text) { error('Usage: post <text>'); break; }
+          if (!playerConfig) { error('No player in admin mode.'); break; }
+          await engine.playerAct({ type: 'post', content: text });
+          success('Posted!');
           break;
         }
         case 'quit':
         case 'exit':
-          info('Saving memory & shutting down...');
-          memoryManager.save();
+          info('Shutting down...');
           await engine.shutdown();
           process.exit(0);
           break;
         default:
-          warn(`Unknown: ${cmd}. Commands: step, post, feed, agents, status, memory, quit`);
+          error(`Unknown: ${cmd}. Commands: step, feed, agents, status, post, quit`);
       }
     } catch (e) {
       error(`Error: ${(e as Error).message}`);
@@ -407,7 +276,6 @@ async function main() {
   });
 
   rl.on('close', async () => {
-    memoryManager.save();
     await engine.shutdown();
     process.exit(0);
   });

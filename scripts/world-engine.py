@@ -251,9 +251,25 @@ async def main():
         os.remove(db_path)
 
     log("[engine] Creating environment...")
+    # Create custom Platform with tuned parameters:
+    #  - recsys_type="twitter" (cosine similarity on bio, better than random)
+    #  - refresh_rec_post_count=5 (more posts recommended per refresh)
+    #  - max_rec_post_len=5 (each agent sees up to 5 recommended posts)
+    #  - following_post_count=5 (see more posts from followed users)
+    from oasis.social_platform.channel import Channel as OasisChannel
+    from oasis.social_platform.platform import Platform as OasisPlatform
+    custom_channel = OasisChannel()
+    custom_platform = OasisPlatform(
+        db_path=db_path,
+        channel=custom_channel,
+        recsys_type="twitter",
+        refresh_rec_post_count=5,
+        max_rec_post_len=5,
+        following_post_count=5,
+    )
     env = oasis.make(
         agent_graph=agent_graph,
-        platform=oasis.DefaultPlatformType.TWITTER,
+        platform=custom_platform,
         database_path=db_path,
     )
     await env.reset()
