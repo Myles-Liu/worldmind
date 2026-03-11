@@ -127,6 +127,32 @@ def patch_camel_for_streaming_api():
     log("[engine] Patched CAMEL for streaming API")
 
 
+def patch_oasis_step_resilience():
+    """Patch OasisEnv.step to use return_exceptions=True so one agent error doesn't kill the whole round."""
+    from oasis.environment.env import OasisEnv
+
+    _original_step = OasisEnv.step
+
+    async def _resilient_step(self, actions):
+        try:
+            return await _original_step(self, actions)
+        except Exception as e:
+            log(f"[engine] Step failed with gather error, retrying with individual agents: {e}")
+            # Fallback: run each agent individually
+            for agent, action in actions.items():
+                try:
+                    if hasattr(action, 'action_type'):
+                        await agent.perform_action_by_data(action.action_type, **action.action_args)
+                    else:
+                        async with self.llm_semaphore:
+                            await agent.perform_action_by_llm()
+                except Exception as agent_err:
+                    log(f"[engine] Agent {getattr(agent, 'agent_id', '?')} error (skipped): {agent_err}")
+
+    OasisEnv.step = _resilient_step
+    log("[engine] Patched OASIS step for resilience")
+
+
 # ─── Main ────────────────────────────────────────────────────────
 
 async def main():
@@ -155,6 +181,7 @@ async def main():
 
     # Patch for streaming-only API
     patch_camel_for_streaming_api()
+    patch_oasis_step_resilience()
 
     from camel.models import ModelFactory
     from camel.types import ModelPlatformType
@@ -318,7 +345,7 @@ async def main():
                 try:
                     await env.step(actions)
                 except Exception as e:
-                    log(f"[engine] Step error: {e}")
+                    log(f"[engine] Step error (non-fatal, continuing): {e}")
 
             emit({"type": "step_done", "rounds": rounds})
 

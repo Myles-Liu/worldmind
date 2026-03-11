@@ -547,14 +547,23 @@ export class WorldEngine {
         `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, 
                 p.content, p.quote_content, p.original_post_id,
                 p.num_likes, p.num_shares, p.created_at,
-                (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.post_id) as num_comments
-         FROM post p LEFT JOIN user u ON p.user_id = u.user_id ORDER BY p.post_id DESC LIMIT ${limit}`
+                (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.post_id) as num_comments,
+                COALESCE(NULLIF(ou.user_name, ''), ou.name) as original_author
+         FROM post p 
+         LEFT JOIN user u ON p.user_id = u.user_id 
+         LEFT JOIN post op ON p.original_post_id = op.post_id
+         LEFT JOIN user ou ON op.user_id = ou.user_id
+         ORDER BY p.post_id DESC LIMIT ${limit}`
       ));
       return rows.map((r: any) => {
-        // For quote posts, show quote_content (the agent's commentary) not the original
-        const content = r.quote_content 
-          ? `${r.content}\n\n💬 ${r.quote_content}` 
-          : (r.content ?? '');
+        // For quote posts, show original with author attribution + quote commentary
+        let content: string;
+        if (r.quote_content) {
+          const origAuthor = r.original_author ? `@${r.original_author}` : '原帖';
+          content = `🔄 转发 ${origAuthor}: ${r.content}\n\n💬 ${r.quote_content}`;
+        } else {
+          content = r.content ?? '';
+        }
         return {
           id: r.post_id,
           authorId: r.user_id,
@@ -575,15 +584,24 @@ export class WorldEngine {
       const db = this.openDb();
       const rows = JSON.parse(db.query(
         `SELECT p.post_id, p.user_id, COALESCE(NULLIF(u.user_name, ''), u.name, 'agent_' || u.user_id) as display_name, 
-                p.content, p.quote_content, p.original_post_id, p.num_likes, p.num_shares, p.created_at 
-         FROM post p LEFT JOIN user u ON p.user_id = u.user_id WHERE p.post_id = ${postId}`
+                p.content, p.quote_content, p.original_post_id, p.num_likes, p.num_shares, p.created_at,
+                COALESCE(NULLIF(ou.user_name, ''), ou.name) as original_author
+         FROM post p 
+         LEFT JOIN user u ON p.user_id = u.user_id 
+         LEFT JOIN post op ON p.original_post_id = op.post_id
+         LEFT JOIN user ou ON op.user_id = ou.user_id
+         WHERE p.post_id = ${postId}`
       ));
       if (!rows[0]) return null;
       const r = rows[0];
       const comments = this.queryCommentsByPost(r.post_id);
-      const content = r.quote_content 
-        ? `${r.content}\n\n💬 ${r.quote_content}` 
-        : (r.content ?? '');
+      let content: string;
+      if (r.quote_content) {
+        const origAuthor = r.original_author ? `@${r.original_author}` : '原帖';
+        content = `🔄 转发 ${origAuthor}: ${r.content}\n\n💬 ${r.quote_content}`;
+      } else {
+        content = r.content ?? '';
+      }
       return {
         id: r.post_id, authorId: r.user_id, authorName: r.display_name ?? r.user_name ?? `agent_${r.user_id}`,
         content, likes: r.num_likes ?? 0, comments: comments.length,
