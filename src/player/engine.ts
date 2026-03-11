@@ -556,11 +556,16 @@ export class WorldEngine {
          ORDER BY p.post_id DESC LIMIT ${limit}`
       ));
       return rows.map((r: any) => {
-        // For quote posts, show original with author attribution + quote commentary
+        // Format content based on post type
         let content: string;
         if (r.quote_content) {
+          // Quote post: original + commentary
           const origAuthor = r.original_author ? `@${r.original_author}` : '原帖';
           content = `🔄 转发 ${origAuthor}: ${r.content}\n\n💬 ${r.quote_content}`;
+        } else if (r.original_post_id) {
+          // Pure repost: just the original content with attribution
+          const origAuthor = r.original_author ? `@${r.original_author}` : '原帖';
+          content = `🔄 转发 ${origAuthor}: ${r.content}`;
         } else {
           content = r.content ?? '';
         }
@@ -599,6 +604,9 @@ export class WorldEngine {
       if (r.quote_content) {
         const origAuthor = r.original_author ? `@${r.original_author}` : '原帖';
         content = `🔄 转发 ${origAuthor}: ${r.content}\n\n💬 ${r.quote_content}`;
+      } else if (r.original_post_id) {
+        const origAuthor = r.original_author ? `@${r.original_author}` : '原帖';
+        content = `🔄 转发 ${origAuthor}: ${r.content}`;
       } else {
         content = r.content ?? '';
       }

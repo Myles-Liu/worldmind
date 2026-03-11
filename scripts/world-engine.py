@@ -302,6 +302,35 @@ async def main():
     await env.reset()
     log("[engine] Environment ready")
 
+    # Seed initial follow relationships — everyone follows everyone (small communities)
+    # This ensures agents see each other's posts via following_post_count
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        agent_ids = [aid for aid, _ in agents_list]
+        count = 0
+        for follower in agent_ids:
+            for followee in agent_ids:
+                if follower != followee:
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO follow (follower_id, followee_id, created_at) VALUES (?, ?, 0)",
+                        (follower, followee)
+                    )
+                    # Update follower/following counts
+                    count += 1
+        # Update user stats
+        for aid in agent_ids:
+            cursor.execute(
+                "UPDATE user SET num_followers = (SELECT COUNT(*) FROM follow WHERE followee_id = ?), "
+                "num_followings = (SELECT COUNT(*) FROM follow WHERE follower_id = ?) WHERE user_id = ?",
+                (aid, aid, aid)
+            )
+        conn.commit()
+        conn.close()
+        log(f"[engine] Seeded {count} initial follow relationships")
+    except Exception as e:
+        log(f"[engine] Failed to seed follows: {e}")
+
     # Emit ready
     emit({"type": "ready", "player_id": player_id, "agents": len(agents_list)})
 

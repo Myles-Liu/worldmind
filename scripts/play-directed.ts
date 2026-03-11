@@ -106,7 +106,7 @@ async function main() {
   const playerConfig = role === 'player' ? {
     username: playerName,
     displayName: playerName,
-    bio: 'A real human exploring this simulation.',
+    bio: '一个真实的人类玩家，正在探索这个模拟世界。',
   } : undefined;
   writeFileSync(profilePath, generateProfileCSV(worldSettings, playerConfig), 'utf-8');
 
@@ -186,7 +186,7 @@ async function main() {
         const full = engine.getPost(p.id);
         if (full && full.comments.length > 0) {
           for (const cm of full.comments) {
-            print(`     └─ @${cm.authorName}: ${cm.content.slice(0, 80)}`);
+            print(`     └─ @${cm.authorName}: ${cm.content}`);
           }
         }
         print(`  ${c.dim}❤️ ${p.likes}  💬 ${p.comments}${c.reset}\n`);
