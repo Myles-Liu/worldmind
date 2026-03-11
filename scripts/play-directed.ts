@@ -35,6 +35,18 @@ const worldArg = args.find((_, i) => args[i - 1] === '--world') ?? 'cn-tech';
 const roundsArg = args.find((_, i) => args[i - 1] === '--rounds');
 const rounds = roundsArg ? parseInt(roundsArg) : 0;
 
+const resumeArg = args.find((_, i) => args[i - 1] === '--resume');
+// --resume can be a full path to export.json, or a run directory name (e.g. 2026-03-11-12-28-29)
+let resumePath: string | undefined;
+if (resumeArg) {
+  if (resumeArg.endsWith('.json')) {
+    resumePath = resumeArg;
+  } else {
+    // Treat as run directory name under data/social/
+    resumePath = join(process.cwd(), 'data/social', resumeArg, 'export.json');
+  }
+}
+
 if (worldArg === 'list') {
   const worlds = listWorlds();
   console.log('Available worlds:', worlds.join(', '));
@@ -143,6 +155,22 @@ async function main() {
   const state = engine.getWorldState();
   success(`Platform ready! ${state.totalAgents} agents registered.`);
 
+  // Resume from previous world state if --resume provided
+  if (resumePath) {
+    info(`Resuming from: ${resumePath}`);
+    try {
+      const imported = await engine.importState(resumePath);
+      const entries = Object.entries(imported);
+      if (entries.length > 0) {
+        success(`Imported: ${entries.map(([k, v]) => `${k}=${v}`).join(', ')}`);
+      } else {
+        error('Import returned empty — file may not exist or be malformed');
+      }
+    } catch (e) {
+      error(`Failed to import: ${(e as Error).message}`);
+    }
+  }
+
   // ─── Run mode ─────────────────────────────────────────────────
 
   if (rounds > 0) {
@@ -225,6 +253,7 @@ async function main() {
   print(`  ${c.bold}graph${c.reset}            — Show follow graph`);
   print(`  ${c.bold}trace${c.reset} [N]        — Show recent actions (default 20)`);
   print(`  ${c.bold}export${c.reset}           — Export world state to JSON`);
+  print(`  ${c.bold}resume${c.reset} <path>     — Import world state from export.json`);
   print(`  ${c.bold}status${c.reset}           — World overview`);
   print(`  ${c.bold}post${c.reset} <text>      — Post as player (if player mode)`);
   print(`  ${c.bold}quit${c.reset}             — Exit`);
@@ -340,6 +369,22 @@ async function main() {
         case 'export': {
           const exported = await engine.exportState(join(runDir, 'export.json'));
           success(`Exported to ${exported.path}`);
+          break;
+        }
+        case 'resume': {
+          if (!text) { error('Usage: resume <path-to-export.json or run-dir-name>'); break; }
+          const rPath = text.endsWith('.json') ? text : join(process.cwd(), 'data/social', text, 'export.json');
+          try {
+            const imported = await engine.importState(rPath);
+            const entries = Object.entries(imported);
+            if (entries.length > 0) {
+              success(`Imported: ${entries.map(([k, v]) => `${k}=${v}`).join(', ')}`);
+            } else {
+              error('Import returned empty');
+            }
+          } catch (e) {
+            error(`Failed: ${(e as Error).message}`);
+          }
           break;
         }
         case 'status': {
