@@ -153,6 +153,321 @@ def patch_oasis_step_resilience():
     log("[engine] Patched OASIS step for resilience")
 
 
+# ─── Agent Memory System ─────────────────────────────────────────
+# Inspired by OpenClaw's hybrid memory architecture:
+# - Structured memories with type, importance, timestamps
+# - Temporal decay (recent memories weighted higher)
+# - LLM-generated reflections for narrative continuity
+# - MMR-like diversity (avoid repetitive memories in prompt)
+import json, os, math, time as _time
+from pathlib import Path
+
+_agent_memory_dir: str = ""
+_agent_profiles: dict = {}  # agent_id → profile string (for reflection prompts)
+
+MEMORY_TYPES = {
+    "action":      {"icon": "🎬", "weight": 0.6},   # what I did
+    "observation":  {"icon": "👀", "weight": 0.8},   # what I saw others do
+    "reflection":  {"icon": "💭", "weight": 1.0},   # my thoughts/feelings about events
+    "social":      {"icon": "🤝", "weight": 0.9},   # relationship-related events
+}
+
+def init_agent_memory(memory_dir: str, profiles: dict = None):
+    """Initialize agent memory storage directory."""
+    global _agent_memory_dir, _agent_profiles
+    _agent_memory_dir = memory_dir
+    _agent_profiles = profiles or {}
+    Path(memory_dir).mkdir(parents=True, exist_ok=True)
+    log(f"[engine] Agent memory enabled: {memory_dir}")
+
+def _get_agent_memory(agent_id: int) -> list:
+    """Load structured memories for an agent. Each memory is a dict:
+    { type, content, timestamp, importance }"""
+    if not _agent_memory_dir:
+        return []
+    mem_file = os.path.join(_agent_memory_dir, f"{agent_id}.json")
+    if os.path.exists(mem_file):
+        try:
+            with open(mem_file, 'r') as f:
+                data = json.load(f)
+                # Migrate from old format (list of strings)
+                if data and isinstance(data[0], str):
+                    return [{"type": "action", "content": s, "timestamp": int(_time.time()), "importance": 0.5} for s in data]
+                return data
+        except:
+            return []
+    return []
+
+def _save_agent_memory(agent_id: int, memory: list):
+    """Save structured memories for an agent."""
+    if not _agent_memory_dir:
+        return
+    mem_file = os.path.join(_agent_memory_dir, f"{agent_id}.json")
+    with open(mem_file, 'w') as f:
+        json.dump(memory, f, ensure_ascii=False, indent=2)
+
+def _temporal_decay_score(timestamp: int, half_life_rounds: int = 5) -> float:
+    """Exponential decay based on age. More recent = higher score.
+    half_life_rounds: after this many rounds (~minutes), score halves."""
+    age = max(0, _time.time() - timestamp)
+    # Each 'round' ≈ 60 seconds in real time
+    rounds_age = age / 60.0
+    return math.exp(-0.693 * rounds_age / max(half_life_rounds, 1))
+
+def _select_memories_for_prompt(memories: list, max_items: int = 8) -> list:
+    """Select most relevant memories using importance × recency × type weight.
+    Also applies MMR-like diversity: skip memories too similar to already selected ones."""
+    if not memories:
+        return []
+
+    # Score each memory
+    scored = []
+    for m in memories:
+        recency = _temporal_decay_score(m.get("timestamp", 0))
+        importance = m.get("importance", 0.5)
+        type_weight = MEMORY_TYPES.get(m.get("type", "action"), {}).get("weight", 0.5)
+        score = recency * importance * type_weight
+        scored.append((score, m))
+
+    scored.sort(key=lambda x: -x[0])
+
+    # MMR-like: skip if content is >60% similar to already selected
+    selected = []
+    selected_contents = []
+    for score, m in scored:
+        content = m.get("content", "")
+        # Simple Jaccard-like check: skip if too similar to any selected
+        is_diverse = True
+        content_words = set(content[:100].split())
+        for prev in selected_contents:
+            prev_words = set(prev[:100].split())
+            if content_words and prev_words:
+                overlap = len(content_words & prev_words) / max(len(content_words | prev_words), 1)
+                if overlap > 0.6:
+                    is_diverse = False
+                    break
+        if is_diverse:
+            selected.append(m)
+            selected_contents.append(content)
+        if len(selected) >= max_items:
+            break
+
+    # Sort selected by timestamp (chronological order in prompt)
+    selected.sort(key=lambda m: m.get("timestamp", 0))
+    return selected
+
+def _format_memories_for_prompt(memories: list) -> str:
+    """Format selected memories into a natural narrative prompt section."""
+    if not memories:
+        return ""
+
+    lines = ["\n\n[Your Memory — What you remember from recent experience]:"]
+    for m in memories:
+        icon = MEMORY_TYPES.get(m.get("type", "action"), {}).get("icon", "📌")
+        content = m.get("content", "")
+        lines.append(f"{icon} {content}")
+
+    lines.append("")
+    lines.append("These memories are part of who you are. Let them naturally influence your behavior — "
+                 "don't explicitly reference them unless it makes sense in context. "
+                 "Act as someone who has lived through these experiences.")
+    return "\n".join(lines)
+
+def _extract_action_memory(agent_id, tool_calls) -> list:
+    """Extract structured memories from tool calls (actions the agent performed)."""
+    new_memories = []
+    now = int(_time.time())
+
+    for tc in (tool_calls or []):
+        if isinstance(tc, dict):
+            action_name = tc.get('tool_name', '') or tc.get('function', {}).get('name', '')
+            args = tc.get('args', {}) or tc.get('function', {}).get('args', {})
+        else:
+            action_name = getattr(tc, 'tool_name', '') or ''
+            args = getattr(tc, 'args', {}) or {}
+
+        if not action_name:
+            continue
+
+        # Generate meaningful memory based on action type
+        mem_type = "action"
+        importance = 0.5
+        content = ""
+
+        if action_name == "create_post":
+            text = str(args.get("content", ""))[:120]
+            content = f"I posted: \"{text}\""
+            importance = 0.7
+        elif action_name == "create_comment":
+            text = str(args.get("content", ""))[:100]
+            post_id = args.get("post_id", "?")
+            content = f"I commented on post #{post_id}: \"{text}\""
+            importance = 0.7
+            mem_type = "social"
+        elif action_name == "like_post":
+            content = f"I liked post #{args.get('post_id', '?')}"
+            importance = 0.3
+        elif action_name == "repost":
+            content = f"I reposted post #{args.get('post_id', '?')}"
+            importance = 0.5
+        elif action_name == "quote_post":
+            text = str(args.get("content", ""))[:80]
+            content = f"I quoted post #{args.get('post_id', '?')}: \"{text}\""
+            importance = 0.6
+        elif action_name == "follow_user":
+            content = f"I followed user #{args.get('user_id', '?')}"
+            importance = 0.6
+            mem_type = "social"
+        elif action_name == "create_group":
+            content = f"I created group: {args.get('group_name', '?')}"
+            importance = 0.8
+            mem_type = "social"
+        elif action_name == "join_group":
+            content = f"I joined group #{args.get('group_id', '?')}"
+            importance = 0.5
+            mem_type = "social"
+        elif action_name == "send_to_group":
+            text = str(args.get("message", ""))[:80]
+            content = f"I sent to group #{args.get('group_id', '?')}: \"{text}\""
+            importance = 0.6
+            mem_type = "social"
+        else:
+            content = f"I performed {action_name}"
+            importance = 0.4
+
+        if content:
+            new_memories.append({
+                "type": mem_type,
+                "content": content,
+                "timestamp": now,
+                "importance": importance,
+            })
+
+    return new_memories
+
+def _extract_observation_memories(agent_id, env_prompt: str) -> list:
+    """Extract observation memories from what the agent saw in the feed.
+    We parse notable interactions directed at this agent."""
+    # For now we extract basic observations about the feed
+    # Future: parse env_prompt to find posts mentioning/replying to this agent
+    return []
+
+async def _generate_reflection(agent_id: int, recent_memories: list) -> dict:
+    """Use LLM to generate a reflection/insight based on recent experiences.
+    This creates deeper narrative continuity."""
+    if len(recent_memories) < 3:
+        return None
+
+    profile = _agent_profiles.get(agent_id, "")
+    recent_text = "\n".join(f"- {m['content']}" for m in recent_memories[-5:])
+
+    # Use the same LLM to generate a brief reflection
+    try:
+        from openai import AsyncOpenAI
+
+        # Use the same env vars that main() sets for OASIS
+        api_key = os.environ.get("OPENAI_API_KEY", "")
+        base_url = os.environ.get("OPENAI_API_BASE_URL", "")
+        model = os.environ.get("WORLDMIND_LLM_MODEL", "")
+
+        if not api_key or not model:
+            return None
+
+        # Ensure base_url is set if available
+        if not base_url:
+            base_url = "https://api.openai.com/v1"
+
+        client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        resp = await client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": f"You are {profile[:200]}. Based on your recent experiences, generate ONE brief personal reflection or insight (1-2 sentences, in the language of your character). This should be an internal thought — something you realized, felt, or decided. Be specific and personal, not generic."},
+                {"role": "user", "content": f"Your recent experiences:\n{recent_text}\n\nWhat's one thing you're thinking about?"}
+            ],
+            max_tokens=100,
+            temperature=0.9,
+        )
+        reflection = resp.choices[0].message.content
+        if reflection:
+            reflection = reflection.strip()
+            if reflection:
+                return {
+                    "type": "reflection",
+                    "content": reflection,
+                    "timestamp": int(_time.time()),
+                    "importance": 0.9,
+                }
+    except Exception as e:
+        log(f"[engine] Reflection generation failed for agent {agent_id}: {e}")
+    return None
+
+# Round counter for reflection scheduling
+_round_counter = 0
+
+def patch_agent_memory():
+    """Patch SocialAgent.perform_action_by_llm to inject structured memory."""
+    from oasis.social_agent.agent import SocialAgent
+
+    _original_perform = SocialAgent.perform_action_by_llm
+
+    async def _memory_injected_perform(self):
+        global _round_counter
+        agent_id = getattr(self, 'social_agent_id', None)
+
+        # Load existing memory
+        memory = _get_agent_memory(agent_id)
+
+        # Select best memories for this round's prompt
+        selected = _select_memories_for_prompt(memory, max_items=8)
+        memory_str = _format_memories_for_prompt(selected)
+
+        # Inject memory into env prompt
+        if memory_str:
+            original_to_text_prompt = self.env.to_text_prompt
+            async def _patched_to_text_prompt(*args, **kwargs):
+                env_prompt = await original_to_text_prompt(*args, **kwargs)
+                return f"{env_prompt}\n{memory_str}"
+            self.env.to_text_prompt = _patched_to_text_prompt
+
+        # Call original perform
+        try:
+            result = await _original_perform(self)
+        finally:
+            if memory_str:
+                self.env.to_text_prompt = original_to_text_prompt
+
+        # Extract new memories from actions
+        try:
+            if hasattr(result, 'info') and result.info:
+                tool_calls = result.info.get('tool_calls') if isinstance(result.info, dict) else getattr(result.info, 'tool_calls', [])
+                new_action_mems = _extract_action_memory(agent_id, tool_calls)
+                memory.extend(new_action_mems)
+
+                # Generate reflection every 3 rounds (async, non-blocking)
+                if _round_counter % 3 == 0 and len(memory) >= 3:
+                    reflection = await _generate_reflection(agent_id, memory)
+                    if reflection:
+                        memory.append(reflection)
+                        log(f"[engine] Agent {agent_id} reflection: {reflection['content'][:60]}...")
+
+                # Prune: keep max 30 memories, but prefer high-importance ones
+                if len(memory) > 30:
+                    # Sort by importance × recency, keep top 30
+                    memory.sort(key=lambda m: -(m.get("importance", 0.5) * _temporal_decay_score(m.get("timestamp", 0))))
+                    memory = memory[:30]
+                    # Re-sort by timestamp for storage
+                    memory.sort(key=lambda m: m.get("timestamp", 0))
+
+                _save_agent_memory(agent_id, memory)
+        except Exception as e:
+            log(f"[engine] Memory save error for agent {agent_id}: {e}")
+
+        return result
+
+    SocialAgent.perform_action_by_llm = _memory_injected_perform
+    log("[engine] Patched agent memory (structured + temporal decay + reflection)")
+
+
 # ─── Main ────────────────────────────────────────────────────────
 
 async def main():
@@ -182,6 +497,23 @@ async def main():
     # Patch for streaming-only API
     patch_camel_for_streaming_api()
     patch_oasis_step_resilience()
+    patch_agent_memory()
+
+    # Read agent profiles from CSV for memory/reflection generation
+    agent_profiles = {}
+    if profile_path and os.path.exists(profile_path):
+        import csv as _csv
+        try:
+            with open(profile_path) as f:
+                reader = _csv.DictReader(f)
+                for i, row in enumerate(reader):
+                    # user_char contains the rich persona description
+                    agent_profiles[i] = row.get("user_char", row.get("personality", ""))
+        except Exception as e:
+            log(f"[engine] Warning: could not read profiles: {e}")
+
+    # Initialize agent memory dir (next to DB)
+    init_agent_memory(os.path.join(os.path.dirname(db_path), 'memory'), agent_profiles)
 
     from camel.models import ModelFactory
     from camel.types import ModelPlatformType
@@ -447,6 +779,8 @@ async def main():
                     actions = {agent: LLMAction() for _, agent in active}
                     try:
                         await env.step(actions)
+                        global _round_counter
+                        _round_counter += 1
                     except Exception as e:
                         log(f"[engine] Agent step error: {e}")
 
