@@ -12,6 +12,7 @@ import { WorldEngine } from '../../src/player/engine.js';
 import { WorldServer } from '../src/server.js';
 import { OasisPlatformAdapter } from '../src/oasis-adapter.js';
 import { DirectorNpcRuntime } from '../src/director-runtime.js';
+import { OasisNpcRuntime } from '../src/oasis-npc-runtime.js';
 import { loadWorld, generateProfileCSV, buildWorldContext } from '../../src/player/world-config.js';
 import type { Persona } from '../src/types.js';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
@@ -60,7 +61,9 @@ async function main() {
   // Check for resume mode
   let importPath: string | undefined;
   if (resumeDir) {
-    const exportFile = join(resumeDir, 'state.export.json');
+    // Try both export filename conventions
+    let exportFile = join(resumeDir, 'state.export.json');
+    if (!existsSync(exportFile)) exportFile = join(resumeDir, 'export.json');
     if (existsSync(exportFile)) {
       importPath = exportFile;
       print(`  📦 Resuming from: ${resumeDir}`);
@@ -161,17 +164,12 @@ async function main() {
 
   const platform = new OasisPlatformAdapter(engine, playerSlotIds);
 
-  // Create DirectorNpcRuntime for NPC auto-play
-  let npcRuntime: DirectorNpcRuntime | undefined;
+  // Create NPC runtime — OASIS native mode (each agent thinks independently)
+  let npcRuntime: OasisNpcRuntime | undefined;
   if (!noNpcs) {
-    npcRuntime = new DirectorNpcRuntime({
-      worldContext,
-      llm: {
-        apiKey: process.env.WORLDMIND_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? '',
-        baseURL: process.env.WORLDMIND_LLM_BASE_URL ?? process.env.OPENAI_API_BASE ?? 'https://api.openai.com/v1',
-        model: process.env.WORLDMIND_LLM_MODEL ?? 'gpt-4o-mini',
-      },
-      memoryDir: join(runDir, 'memory'),
+    npcRuntime = new OasisNpcRuntime({
+      engine,
+      npcIds,
     });
   }
 
