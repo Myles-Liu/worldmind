@@ -1,7 +1,7 @@
 # OpenClaw 仓库核心设计解析
 
-> 来源：DeepWiki 分析 openclaw/openclaw
-> 记录日期：2026-03-11
+> 来源：DeepWiki 分析 openclaw/openclaw + 源码阅读
+> 记录日期：2026-03-11（Agent Loop 深度分析更新：2026-03-12）
 
 ---
 
@@ -131,7 +131,180 @@
 
 ---
 
-## 7. 📦 可替换上下文引擎（Pluggable Context Engine）
+## 7. 🔁 Agent Loop 核心机制：双层循环与退出条件
+
+> 源码精读：2026-03-12，直接阅读 `pi-agent-core/dist/agent-loop.js`、`src/agents/pi-embedded-runner/run.ts`、`src/agents/pi-embedded-runner/run/attempt.ts`
+
+这是整个系统最核心的运行时机制——AI Agent 如何在"调用 LLM → 执行工具 → 再调用 LLM"的循环中决定何时停止。
+
+### 7.1 双层循环架构
+
+OpenClaw 的 Agent 运行时由两层嵌套循环组成：
+
+```
+┌─────────────────────────────────────────────────┐
+│  Outer: Run Retry Loop (run.ts)                 │
+│  处理基础设施级别的重试                              │
+│  ┌───────────────────────────────────────────┐   │
+│  │  Inner: Agent Tool Loop (agent-loop.js)   │   │
+│  │  处理 LLM 推理 + 工具执行的循环               │   │
+│  │                                           │   │
+│  │  while (hasMoreToolCalls || pending) {     │   │
+│  │    response = callLLM()                   │   │
+│  │    if (response has toolCalls)             │   │
+│  │      execute tools → loop                 │   │
+│  │    else                                   │   │
+│  │      break  ← LLM 自主决定停止              │   │
+│  │  }                                        │   │
+│  └───────────────────────────────────────────┘   │
+│  if (auth failure) → rotate profile → retry      │
+│  if (context overflow) → compaction → retry      │
+│  if (thinking unsupported) → downgrade → retry   │
+└─────────────────────────────────────────────────┘
+```
+
+### 7.2 内层循环：Agent Tool Loop
+
+位于 `@mariozechner/pi-agent-core/dist/agent-loop.js` 的 `runLoop()` 函数。
+
+```javascript
+// 简化后的核心逻辑
+async function runLoop(currentContext, newMessages, config, signal, stream) {
+  while (true) {                                    // 外层：follow-up 消息循环
+    let hasMoreToolCalls = true;
+    
+    while (hasMoreToolCalls || pendingMessages.length > 0) {  // 内层：工具循环
+      // 1. 注入 steering 消息（用户在 agent 运行中插入的新消息）
+      if (pendingMessages.length > 0) {
+        currentContext.messages.push(...pendingMessages);
+        pendingMessages = [];
+      }
+      
+      // 2. 调用 LLM 获取 assistant response
+      const message = await streamAssistantResponse(currentContext, config, signal, stream);
+      
+      // 3. 错误或中止 → 立即退出
+      if (message.stopReason === "error" || message.stopReason === "aborted") {
+        stream.push({ type: "agent_end", messages: newMessages });
+        return;
+      }
+      
+      // 4. 检查是否有工具调用
+      const toolCalls = message.content.filter(c => c.type === "toolCall");
+      hasMoreToolCalls = toolCalls.length > 0;
+      
+      // 5. 有工具调用 → 执行并循环
+      if (hasMoreToolCalls) {
+        const { toolResults, steeringMessages } = await executeToolCalls(...);
+        currentContext.messages.push(...toolResults);
+        // 执行期间用户可能插入了 steering 消息
+        pendingMessages = steeringMessages ?? await config.getSteeringMessages();
+      }
+    }
+    
+    // 6. 内层退出后，检查有没有 follow-up 消息
+    const followUpMessages = await config.getFollowUpMessages();
+    if (followUpMessages.length > 0) {
+      pendingMessages = followUpMessages;
+      continue;  // 有 follow-up → 继续外层循环
+    }
+    
+    break;  // 没有 → 彻底退出
+  }
+}
+```
+
+**退出条件总结**：
+
+| 条件 | 触发者 | 结果 |
+|------|--------|------|
+| LLM 返回纯文本（无 toolCall） | LLM 自主决定 | 退出内层循环 |
+| `stopReason === "error"` | LLM API 错误 | 立即退出全部循环 |
+| `stopReason === "aborted"` | AbortSignal | 立即退出全部循环 |
+| 无 follow-up 消息 | 用户无新输入 | 退出外层循环 |
+
+**关键洞察：OpenClaw 没有设置 `max_iterations` 上限。** 它完全信任 LLM 在合适的时候停下来（不再发出 tool_call）。唯一的硬保护是外层的全局超时。
+
+### 7.3 Steering 与 Follow-up 机制
+
+Agent 运行期间支持两种用户介入：
+
+- **Steering Messages**：用户在工具执行期间发送的消息。执行完当前工具后注入到 context 中，**剩余未执行的工具调用会被跳过**（标记为 `"Skipped due to queued user message."`）
+- **Follow-up Messages**：Agent 完成一轮后（即将退出循环时），检查是否有用户新消息。有则重新进入循环继续处理
+
+这使得用户可以在 Agent 运行过程中随时"插话"，修正 Agent 的行为方向。
+
+### 7.4 外层循环：Run Retry Loop
+
+位于 `src/agents/pi-embedded-runner/run.ts`。负责处理基础设施级别的失败和重试：
+
+```typescript
+// 简化后的核心逻辑
+const MAX_RUN_LOOP_ITERATIONS = 32 ~ 160;  // 根据 auth profile 数量动态计算
+
+while (true) {
+  if (runLoopIterations >= MAX_RUN_LOOP_ITERATIONS) → 报错退出;
+  
+  const attempt = await runEmbeddedAttempt(params);  // 跑一次完整的 agent tool loop
+  
+  // 重试条件判断：
+  if (context overflow && compactionRetries < 3)     → compaction 后重试
+  if (auth failure)                                   → 切换 auth profile 重试
+  if (rate limit)                                     → 切换 auth profile 重试
+  if (thinking level unsupported)                     → 降级 thinking level 重试
+  if (timeout && hasMoreProfiles)                     → 切换 auth profile 重试
+  if (CloudCodeAssist format error)                   → 切换 profile 重试
+  
+  // 正常完成 → return 结果
+  return result;
+}
+```
+
+### 7.5 Thinking Level 降级机制
+
+OpenClaw 支持 6 个 thinking level：`off → minimal → low → medium → high → xhigh`
+
+不是所有模型都支持所有级别。当 LLM API 返回类似 `"Unsupported thinking level. Supported values are: 'low', 'off'"` 的错误时：
+
+```typescript
+// src/agents/pi-embedded-helpers/thinking.ts
+function pickFallbackThinkingLevel({ message, attempted }) {
+  // 1. 从错误消息中正则提取支持的级别列表
+  const supported = extractSupportedValues(message);  // e.g. ["low", "off"]
+  
+  // 2. 遍历支持的级别，跳过已尝试过的
+  for (const level of supported) {
+    const normalized = normalizeThinkLevel(level);
+    if (!attempted.has(normalized)) return normalized;
+  }
+  
+  return undefined;  // 全试过了，放弃
+}
+```
+
+**实际流程示例**：
+1. 用户配置 `thinking: high`
+2. 第一次调用 → 模型报错 "只支持 low, off"
+3. 降级到 `low`，标记 `attempted = {high, low}`
+4. 第二次调用 → 成功 ✅（如果 `low` 也失败则继续降到 `off`）
+
+### 7.6 安全兜底机制总览
+
+| 机制 | 来源文件 | 默认值 |
+|------|---------|--------|
+| LLM 不再调 tool → 自然退出 | `agent-loop.js` | 由 LLM 自主决定 |
+| 全局超时 abort | `run/attempt.ts` | 600秒（`agents.defaults.timeoutSeconds`） |
+| 外层重试次数上限 | `run.ts` | 32~160次（仅基础设施重试） |
+| Compaction 重试上限 | `run.ts` | 3次 |
+| AbortSignal 取消 | `run/attempt.ts` | 外部随时可触发 |
+| Auth profile 耗尽 | `run.ts` | 所有 profile 进入冷却期后触发 model fallback |
+| Thinking level 全部失败 | `run.ts` | 返回最终错误 |
+
+**源码**：`node_modules/@mariozechner/pi-agent-core/dist/agent-loop.js`、`src/agents/pi-embedded-runner/run.ts:380-520`、`src/agents/pi-embedded-runner/run/attempt.ts:1-680`、`src/agents/pi-embedded-helpers/thinking.ts:1-40`
+
+---
+
+## 8. 📦 可替换上下文引擎（Pluggable Context Engine）
 
 上下文管理被抽象成一个标准接口 `ContextEngine`，任何插件都可以注册自己的实现来完全替换内置的对话历史管理逻辑：
 
@@ -148,7 +321,7 @@
 
 ---
 
-## 8. 📡 流式分块输出（EmbeddedBlockChunker）
+## 9. 📡 流式分块输出（EmbeddedBlockChunker）
 
 为了在消息平台（如 Telegram、Slack）上实现流式分段发送，系统实现了一个感知 Markdown 语法结构的分块器：
 
