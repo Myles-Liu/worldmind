@@ -19,7 +19,7 @@ import { PredictAgent } from '../../agents/predict.js';
 import { ChallengeAgent } from '../../agents/challenge.js';
 import { ScriptGenerator, createScriptGenerator } from './script-generator.js';
 import { OasisDramatizer, createOasisDramatizer, type OasisDramatizationConfig } from './oasis-dramatizer.js';
-import { FridayLLMClient } from '../../llm/friday-client.js';
+import { CustomLLMClient } from '../../llm/custom-llm-client.js';
 type LLMClient = any;
 
 // ─── Domain Config ──────────────────────────────────────────────
@@ -96,7 +96,7 @@ export class ClassicTextDomainAdapter implements DomainAdapter {
 
   constructor(options?: { llmClient?: LLMClient; dramatizationConfig?: OasisDramatizationConfig }) {
     // Initialize LLM client
-    const llmClient = options?.llmClient ?? new FridayLLMClient();
+    const llmClient = options?.llmClient ?? new CustomLLMClient();
 
     // Initialize agents
     this.agents = [new TrendAgent(), new PredictAgent(), new ChallengeAgent()];

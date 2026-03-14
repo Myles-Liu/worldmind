@@ -1,11 +1,11 @@
 /**
- * Friday API Client
+ * Custom API Client
  * 
- * Friday 的认证方式与 OpenAI 不同：
+ * Custom 的认证方式与 OpenAI 不同：
  * appId 和 appKey 需要放在 request body 里，而不是 Authorization header。
  */
 
-export interface FridayConfig {
+export interface CustomConfig {
   baseURL: string;
   appId: string;
   appKey: string;
@@ -14,23 +14,23 @@ export interface FridayConfig {
   timeout?: number;
 }
 
-function getDefaultConfig(): FridayConfig {
+function getDefaultConfig(): CustomConfig {
   return {
-    baseURL: 'https://aigc.sankuai.com/v1',
-    appId: process.env['FRIDAY_APP_ID'] ?? '',
-    appKey: process.env['FRIDAY_API_KEY'] ?? '',
-    model: process.env['FRIDAY_MODEL'] ?? 'aws.claude-opus-4.6',
+    baseURL: process.env['LLM_BASE_URL'] ?? 'https://api.openai.com/v1',
+    appId: process.env['LLM_APP_ID'] ?? '',
+    appKey: process.env['LLM_API_KEY'] ?? '',
+    model: process.env['LLM_MODEL'] ?? 'aws.claude-opus-4.6',
     maxRetries: 3,
     timeout: 120_000,
   };
 }
 
-interface FridayMessage {
+interface CustomMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
-interface FridayResponse {
+interface CustomResponse {
   status: number;
   message: string;
   data: {
@@ -45,14 +45,14 @@ interface FridayResponse {
   };
 }
 
-export class FridayLLMClient {
-  private config: FridayConfig;
+export class CustomLLMClient {
+  private config: CustomConfig;
 
-  constructor(config?: Partial<FridayConfig>) {
+  constructor(config?: Partial<CustomConfig>) {
     this.config = { ...getDefaultConfig(), ...config };
   }
 
-  private async callAPI(messages: FridayMessage[], temperature = 0.7, maxTokens = 4096): Promise<string> {
+  private async callAPI(messages: CustomMessage[], temperature = 0.7, maxTokens = 4096): Promise<string> {
     const body = {
       appId: this.config.appId,
       appKey: this.config.appKey,
@@ -79,10 +79,10 @@ export class FridayLLMClient {
 
         clearTimeout(timeoutId);
 
-        const data = await resp.json() as FridayResponse;
+        const data = await resp.json() as CustomResponse;
 
         if (data.status !== 0) {
-          throw new Error(`Friday API error: ${data.message}`);
+          throw new Error(`Custom API error: ${data.message}`);
         }
 
         return data.data.result ?? data.data.choices?.[0]?.message?.content ?? '';
@@ -102,7 +102,7 @@ export class FridayLLMClient {
     temperature?: number;
     maxTokens?: number;
   }): Promise<string> {
-    const messages: FridayMessage[] = [
+    const messages: CustomMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ];
@@ -128,7 +128,7 @@ export class FridayLLMClient {
     try {
       return JSON.parse(cleaned) as T;
     } catch (e) {
-      console.error('[FridayLLM] JSON parse failed. Raw:', cleaned.substring(0, 500));
+      console.error('[CustomLLM] JSON parse failed. Raw:', cleaned.substring(0, 500));
       throw e;
     }
   }

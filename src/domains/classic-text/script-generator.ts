@@ -5,7 +5,7 @@
  * using LLM to interpret principles and create modern scenarios.
  */
 
-import { FridayLLMClient } from '../../llm/friday-client.js';
+import { CustomLLMClient } from '../../llm/custom-llm-client.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LLMClient = any;
 import type {
@@ -54,7 +54,7 @@ export class ScriptGenerator {
   private llm: LLMClient;
 
   constructor(llmClient?: LLMClient) {
-    this.llm = llmClient ?? new FridayLLMClient();
+    this.llm = llmClient ?? new CustomLLMClient();
   }
 
   /**
