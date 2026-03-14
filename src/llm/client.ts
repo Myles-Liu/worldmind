@@ -140,7 +140,13 @@ export class LLMClient {
       content = content.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
     }
 
-    return JSON.parse(content) as T;
+    // Debug: log raw content if parse fails
+    try {
+      return JSON.parse(content) as T;
+    } catch (e) {
+      console.error('[LLM] Failed to parse JSON. Raw content:', content.substring(0, 500));
+      throw e;
+    }
   }
 
   /**

@@ -5,7 +5,9 @@
  * using LLM to interpret principles and create modern scenarios.
  */
 
-import { LLMClient } from '../../llm/client.js';
+import { FridayLLMClient } from '../../llm/friday-client.js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LLMClient = any;
 import type {
   Script,
   ScriptAct,
@@ -52,7 +54,7 @@ export class ScriptGenerator {
   private llm: LLMClient;
 
   constructor(llmClient?: LLMClient) {
-    this.llm = llmClient ?? new LLMClient();
+    this.llm = llmClient ?? new FridayLLMClient();
   }
 
   /**
@@ -176,53 +178,33 @@ Keep it concise but insightful (2-3 paragraphs).`;
 
   /**
    * Generate the dramatized acts using LLM.
+   * 精简 prompt，聚焦核心输出。
    */
   private async generateActs(
     request: ScriptRequest,
     principle: string,
     characters: Character[],
   ): Promise<ScriptAct[]> {
-    const systemPrompt = `You are a brilliant screenwriter specializing in dramatizing ancient wisdom.
-Create a dramatic scene with dialogue that brings a classical principle to life in a modern context.
+    // 精简的中文 prompt，减少 token 消耗
+    const systemPrompt = `你是编剧。只返回纯JSON，不要markdown。`;
 
-Return ONLY valid JSON (no markdown, no extra text). Example structure:
-{
-  "acts": [
-    {
-      "actNumber": 1,
-      "title": "Scene title in Chinese",
-      "description": "What happens in this act",
-      "principleApplied": "How the principle is demonstrated",
-      "dialogues": [
-        {"speaker": "character_id", "content": "dialogue text", "isThought": false, "emotion": "emotion"}
-      ]
-    }
-  ]
-}`;
+    const characterNames = characters
+      .filter((c) => c.role !== 'narrator')
+      .map((c) => c.name)
+      .join('、');
 
-    const characterList = characters
-      .map((c) => `- ${c.name} (${c.role}): ${c.personality}`)
-      .join('\n');
+    const userMessage = `将古文改编为3幕现代剧本，每幕3-4段对话。
 
-    const userMessage = `Create a 3-act dramatization of this principle:
+原文："${request.sourceText}"
+场景：${request.customSceneDescription ?? this.getSceneDescription(request.sceneType)}
+角色：${characterNames}
 
-Principle: ${principle}
-Original text: "${request.sourceText}"
-Modern scenario: ${request.sceneType}
-${request.customSceneDescription ? `Custom context: ${request.customSceneDescription}` : ''}
-
-Characters:
-${characterList}
-
-Generate realistic dialogue that demonstrates how the ancient principle applies to the modern scenario.
-Each act should build on the last, showing the principle's practical impact.
-Include internal thoughts where appropriate.
-
-Return ONLY the JSON structure with acts array.`;
+返回格式：
+{"acts":[{"actNumber":1,"title":"标题","description":"概述","principleApplied":"原理应用","dialogues":[{"speaker":"角色","content":"台词","isThought":false,"emotion":"情绪"}]}]}`;
 
     const response = await this.llm.json<{ acts: ScriptAct[] }>(systemPrompt, userMessage, {
       temperature: 0.7,
-      maxTokens: 2000,
+      maxTokens: 8192,
     });
 
     return response.acts;
